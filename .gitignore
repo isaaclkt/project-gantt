@@ -1,0 +1,34 @@
+# Root level gitignore for project-grantt
+
+# Package manager artifacts
+package-lock.json
+node_modules/
+
+# Windows artifacts
+nul
+Thumbs.db
+Desktop.ini
+*.lnk
+
+# macOS
+.DS_Store
+._*
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Claude Code local settings
+.claude/
+
+# Temporary folders
+foto/
+temp/
+tmp/
+
+# Logs
+*.log
+logs/
