@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, LayoutDashboard, Eye, EyeOff } from 'lucide-react'
 import { apiFetch } from '@/lib/api-config'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/components/ui/use-toast'
 
 interface RegisterResponse {
   success: boolean

@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import { User, Settings as SettingsIcon, Bell, Lock, Loader2 } from 'lucide-react'
 import { UserProfile, UserSettings } from '@/lib/types'
 import { getUserProfile, updateUserProfile, updateUserSettings, changePassword, uploadAvatar } from '@/lib/services'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@/contexts/auth-context'
 import { useSettings } from '@/contexts/settings-context'
 
