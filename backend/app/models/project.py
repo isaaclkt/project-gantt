@@ -22,6 +22,7 @@ class Project(db.Model):
     owner_id = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='SET NULL'), index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = db.Column(db.DateTime, nullable=True)
 
     # Relationships
     tasks = db.relationship('Task', backref='project', lazy='dynamic', cascade='all, delete-orphan')
@@ -31,9 +32,22 @@ class Project(db.Model):
         back_populates='projects'
     )
 
+    def soft_delete(self):
+        """Soft delete the project"""
+        self.deleted_at = datetime.utcnow()
+
+    def restore(self):
+        """Restore a soft deleted project"""
+        self.deleted_at = None
+
+    @property
+    def is_deleted(self):
+        """Check if project is soft deleted"""
+        return self.deleted_at is not None
+
     def calculate_progress(self):
         """Calculate project progress based on tasks"""
-        tasks = self.tasks.all()
+        tasks = self.tasks.filter_by(deleted_at=None).all()
         if not tasks:
             return 0
         return int(sum(task.progress for task in tasks) / len(tasks))

@@ -13,12 +13,40 @@ USE project_grantt;
 -- ============================================
 -- Drop tables if exist (for clean recreation)
 -- ============================================
+DROP VIEW IF EXISTS v_tasks_detailed;
+DROP VIEW IF EXISTS v_projects_summary;
 DROP TABLE IF EXISTS project_members;
 DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS projects;
 DROP TABLE IF EXISTS team_members;
 DROP TABLE IF EXISTS user_settings;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS departments;
+DROP TABLE IF EXISTS roles;
+
+-- ============================================
+-- DEPARTMENTS TABLE
+-- ============================================
+CREATE TABLE departments (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_departments_name (name)
+) ENGINE=InnoDB;
+
+-- ============================================
+-- ROLES TABLE
+-- ============================================
+CREATE TABLE roles (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_roles_name (name)
+) ENGINE=InnoDB;
 
 -- ============================================
 -- USERS TABLE
@@ -29,18 +57,21 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     avatar VARCHAR(500),
-    role VARCHAR(100) DEFAULT 'member',
-    department VARCHAR(100),
+    role ENUM('admin', 'manager', 'member', 'viewer') DEFAULT 'member',
+    department_id VARCHAR(36),
     phone VARCHAR(50),
     timezone VARCHAR(100) DEFAULT 'America/Sao_Paulo',
     status ENUM('active', 'away', 'offline') DEFAULT 'active',
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL DEFAULT NULL,
 
+    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL,
     INDEX idx_users_email (email),
     INDEX idx_users_status (status),
-    INDEX idx_users_department (department)
+    INDEX idx_users_department (department_id),
+    INDEX idx_users_deleted (deleted_at)
 ) ENGINE=InnoDB;
 
 -- ============================================
@@ -66,25 +97,28 @@ CREATE TABLE user_settings (
 ) ENGINE=InnoDB;
 
 -- ============================================
--- TEAM MEMBERS TABLE (for team management view)
+-- TEAM MEMBERS TABLE
+-- Agora referencia users em vez de duplicar dados
 -- ============================================
 CREATE TABLE team_members (
     id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    user_id VARCHAR(36) UNIQUE,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    avatar VARCHAR(500),
-    role VARCHAR(100) NOT NULL,
-    department VARCHAR(100),
+    user_id VARCHAR(36) NOT NULL UNIQUE,
+    role_id VARCHAR(36),
+    department_id VARCHAR(36),
+    job_title VARCHAR(100),
     status ENUM('active', 'away', 'offline') DEFAULT 'active',
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL DEFAULT NULL,
 
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_team_members_email (email),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL,
+    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL,
+    INDEX idx_team_members_user (user_id),
     INDEX idx_team_members_status (status),
-    INDEX idx_team_members_department (department)
+    INDEX idx_team_members_department (department_id),
+    INDEX idx_team_members_deleted (deleted_at)
 ) ENGINE=InnoDB;
 
 -- ============================================
@@ -102,11 +136,13 @@ CREATE TABLE projects (
     owner_id VARCHAR(36),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL DEFAULT NULL,
 
     FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_projects_status (status),
     INDEX idx_projects_owner (owner_id),
-    INDEX idx_projects_dates (start_date, end_date)
+    INDEX idx_projects_dates (start_date, end_date),
+    INDEX idx_projects_deleted (deleted_at)
 ) ENGINE=InnoDB;
 
 -- ============================================
@@ -142,6 +178,7 @@ CREATE TABLE tasks (
     project_id VARCHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL DEFAULT NULL,
 
     FOREIGN KEY (assignee_id) REFERENCES team_members(id) ON DELETE SET NULL,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
@@ -149,7 +186,8 @@ CREATE TABLE tasks (
     INDEX idx_tasks_priority (priority),
     INDEX idx_tasks_project (project_id),
     INDEX idx_tasks_assignee (assignee_id),
-    INDEX idx_tasks_dates (start_date, end_date)
+    INDEX idx_tasks_dates (start_date, end_date),
+    INDEX idx_tasks_deleted (deleted_at)
 ) ENGINE=InnoDB;
 
 -- ============================================
@@ -164,7 +202,7 @@ BEGIN
     SET progress = (
         SELECT COALESCE(AVG(progress), 0)
         FROM tasks
-        WHERE project_id = p_project_id
+        WHERE project_id = p_project_id AND deleted_at IS NULL
     )
     WHERE id = p_project_id;
 END //
@@ -180,7 +218,9 @@ CREATE TRIGGER after_task_update
 AFTER UPDATE ON tasks
 FOR EACH ROW
 BEGIN
-    CALL update_project_progress(NEW.project_id);
+    IF NEW.deleted_at IS NULL THEN
+        CALL update_project_progress(NEW.project_id);
+    END IF;
 END //
 DELIMITER ;
 
@@ -205,17 +245,76 @@ END //
 DELIMITER ;
 
 -- ============================================
--- SAMPLE DATA (Optional - for testing)
+-- VIEWS
 -- ============================================
 
+-- View for tasks with project and assignee info (only non-deleted)
+CREATE VIEW v_tasks_detailed AS
+SELECT
+    t.id,
+    t.name,
+    t.description,
+    t.start_date,
+    t.end_date,
+    t.status,
+    t.priority,
+    t.progress,
+    t.project_id,
+    p.name AS project_name,
+    p.color AS project_color,
+    t.assignee_id,
+    u.name AS assignee_name,
+    u.avatar AS assignee_avatar,
+    t.created_at,
+    t.updated_at
+FROM tasks t
+LEFT JOIN projects p ON t.project_id = p.id
+LEFT JOIN team_members tm ON t.assignee_id = tm.id
+LEFT JOIN users u ON tm.user_id = u.id
+WHERE t.deleted_at IS NULL;
+
+-- View for projects with member count (only non-deleted)
+CREATE VIEW v_projects_summary AS
+SELECT
+    p.*,
+    COUNT(DISTINCT pm.team_member_id) AS member_count,
+    COUNT(DISTINCT t.id) AS task_count,
+    COUNT(DISTINCT CASE WHEN t.status = 'completed' THEN t.id END) AS completed_tasks
+FROM projects p
+LEFT JOIN project_members pm ON p.id = pm.project_id
+LEFT JOIN tasks t ON p.id = t.project_id AND t.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+GROUP BY p.id;
+
+-- ============================================
+-- SAMPLE DATA
+-- ============================================
+
+-- Insert departments
+INSERT INTO departments (id, name, description) VALUES
+('dept1', 'Gestão', 'Gerenciamento de projetos e equipes'),
+('dept2', 'Desenvolvimento', 'Desenvolvimento de software'),
+('dept3', 'Design', 'Design de interfaces e experiência'),
+('dept4', 'Qualidade', 'Garantia de qualidade e testes'),
+('dept5', 'Infraestrutura', 'DevOps e infraestrutura');
+
+-- Insert roles
+INSERT INTO roles (id, name, description) VALUES
+('role1', 'Project Manager', 'Gerente de projetos'),
+('role2', 'Frontend Developer', 'Desenvolvedor frontend'),
+('role3', 'Backend Developer', 'Desenvolvedor backend'),
+('role4', 'UI/UX Designer', 'Designer de interface'),
+('role5', 'QA Engineer', 'Engenheiro de qualidade'),
+('role6', 'DevOps Engineer', 'Engenheiro DevOps');
+
 -- Insert sample users
-INSERT INTO users (id, name, email, password_hash, avatar, role, department, timezone) VALUES
-('u1', 'Ana Silva', 'ana.silva@empresa.com', '$2b$12$placeholder_hash', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ana', 'Project Manager', 'Gestão', 'America/Sao_Paulo'),
-('u2', 'Carlos Santos', 'carlos.santos@empresa.com', '$2b$12$placeholder_hash', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carlos', 'Frontend Developer', 'Desenvolvimento', 'America/Sao_Paulo'),
-('u3', 'Marina Costa', 'marina.costa@empresa.com', '$2b$12$placeholder_hash', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marina', 'Backend Developer', 'Desenvolvimento', 'America/Sao_Paulo'),
-('u4', 'Pedro Oliveira', 'pedro.oliveira@empresa.com', '$2b$12$placeholder_hash', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Pedro', 'UI/UX Designer', 'Design', 'America/Sao_Paulo'),
-('u5', 'Julia Ferreira', 'julia.ferreira@empresa.com', '$2b$12$placeholder_hash', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Julia', 'QA Engineer', 'Qualidade', 'America/Sao_Paulo'),
-('u6', 'Rafael Mendes', 'rafael.mendes@empresa.com', '$2b$12$placeholder_hash', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Rafael', 'DevOps Engineer', 'Infraestrutura', 'America/Sao_Paulo');
+INSERT INTO users (id, name, email, password_hash, avatar, role, department_id, timezone) VALUES
+('u1', 'Ana Silva', 'ana.silva@empresa.com', '$2b$12$placeholder_hash', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ana', 'manager', 'dept1', 'America/Sao_Paulo'),
+('u2', 'Carlos Santos', 'carlos.santos@empresa.com', '$2b$12$placeholder_hash', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carlos', 'member', 'dept2', 'America/Sao_Paulo'),
+('u3', 'Marina Costa', 'marina.costa@empresa.com', '$2b$12$placeholder_hash', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marina', 'member', 'dept2', 'America/Sao_Paulo'),
+('u4', 'Pedro Oliveira', 'pedro.oliveira@empresa.com', '$2b$12$placeholder_hash', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Pedro', 'member', 'dept3', 'America/Sao_Paulo'),
+('u5', 'Julia Ferreira', 'julia.ferreira@empresa.com', '$2b$12$placeholder_hash', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Julia', 'member', 'dept4', 'America/Sao_Paulo'),
+('u6', 'Rafael Mendes', 'rafael.mendes@empresa.com', '$2b$12$placeholder_hash', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Rafael', 'member', 'dept5', 'America/Sao_Paulo');
 
 -- Insert user settings for sample users
 INSERT INTO user_settings (user_id, theme, language) VALUES
@@ -226,14 +325,14 @@ INSERT INTO user_settings (user_id, theme, language) VALUES
 ('u5', 'system', 'pt-BR'),
 ('u6', 'dark', 'pt-BR');
 
--- Insert team members
-INSERT INTO team_members (id, user_id, name, email, avatar, role, department, status) VALUES
-('tm1', 'u1', 'Ana Silva', 'ana.silva@empresa.com', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ana', 'Project Manager', 'Gestão', 'active'),
-('tm2', 'u2', 'Carlos Santos', 'carlos.santos@empresa.com', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carlos', 'Frontend Developer', 'Desenvolvimento', 'active'),
-('tm3', 'u3', 'Marina Costa', 'marina.costa@empresa.com', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marina', 'Backend Developer', 'Desenvolvimento', 'away'),
-('tm4', 'u4', 'Pedro Oliveira', 'pedro.oliveira@empresa.com', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Pedro', 'UI/UX Designer', 'Design', 'active'),
-('tm5', 'u5', 'Julia Ferreira', 'julia.ferreira@empresa.com', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Julia', 'QA Engineer', 'Qualidade', 'offline'),
-('tm6', 'u6', 'Rafael Mendes', 'rafael.mendes@empresa.com', 'https://api.dicebear.com/7.x/avataaars/svg?seed=Rafael', 'DevOps Engineer', 'Infraestrutura', 'active');
+-- Insert team members (now referencing users)
+INSERT INTO team_members (id, user_id, role_id, department_id, job_title, status) VALUES
+('tm1', 'u1', 'role1', 'dept1', 'Project Manager', 'active'),
+('tm2', 'u2', 'role2', 'dept2', 'Frontend Developer', 'active'),
+('tm3', 'u3', 'role3', 'dept2', 'Backend Developer', 'away'),
+('tm4', 'u4', 'role4', 'dept3', 'UI/UX Designer', 'active'),
+('tm5', 'u5', 'role5', 'dept4', 'QA Engineer', 'offline'),
+('tm6', 'u6', 'role6', 'dept5', 'DevOps Engineer', 'active');
 
 -- Insert sample projects
 INSERT INTO projects (id, name, description, color, status, progress, start_date, end_date, owner_id) VALUES
@@ -270,42 +369,3 @@ INSERT INTO tasks (id, name, description, start_date, end_date, status, priority
 ('t8', 'Análise de Requisitos', 'Levantar requisitos de integração', DATE_ADD(CURDATE(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 10 DAY), 'todo', 'medium', 0, 'tm3', 'p3'),
 ('t9', 'Scan de Vulnerabilidades', 'Executar ferramentas de scan', DATE_SUB(CURDATE(), INTERVAL 15 DAY), DATE_SUB(CURDATE(), INTERVAL 10 DAY), 'completed', 'high', 100, 'tm6', 'p4'),
 ('t10', 'Relatório de Segurança', 'Documentar vulnerabilidades encontradas', DATE_SUB(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 5 DAY), 'in-progress', 'high', 40, 'tm6', 'p4');
-
--- ============================================
--- VIEWS (Optional - for convenience)
--- ============================================
-
--- View for tasks with project and assignee info
-CREATE VIEW v_tasks_detailed AS
-SELECT
-    t.id,
-    t.name,
-    t.description,
-    t.start_date,
-    t.end_date,
-    t.status,
-    t.priority,
-    t.progress,
-    t.project_id,
-    p.name AS project_name,
-    p.color AS project_color,
-    t.assignee_id,
-    tm.name AS assignee_name,
-    tm.avatar AS assignee_avatar,
-    t.created_at,
-    t.updated_at
-FROM tasks t
-LEFT JOIN projects p ON t.project_id = p.id
-LEFT JOIN team_members tm ON t.assignee_id = tm.id;
-
--- View for projects with member count
-CREATE VIEW v_projects_summary AS
-SELECT
-    p.*,
-    COUNT(DISTINCT pm.team_member_id) AS member_count,
-    COUNT(DISTINCT t.id) AS task_count,
-    COUNT(DISTINCT CASE WHEN t.status = 'completed' THEN t.id END) AS completed_tasks
-FROM projects p
-LEFT JOIN project_members pm ON p.id = pm.project_id
-LEFT JOIN tasks t ON p.id = t.project_id
-GROUP BY p.id;

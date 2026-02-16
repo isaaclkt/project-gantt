@@ -22,6 +22,20 @@ class Task(db.Model):
     project_id = db.Column(db.String(36), db.ForeignKey('projects.id', ondelete='CASCADE'), nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = db.Column(db.DateTime, nullable=True)
+
+    def soft_delete(self):
+        """Soft delete the task"""
+        self.deleted_at = datetime.utcnow()
+
+    def restore(self):
+        """Restore a soft deleted task"""
+        self.deleted_at = None
+
+    @property
+    def is_deleted(self):
+        """Check if task is soft deleted"""
+        return self.deleted_at is not None
 
     def to_dict(self):
         """Convert to dictionary for API response"""

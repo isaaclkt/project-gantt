@@ -16,19 +16,22 @@ class User(db.Model):
     email = db.Column(db.String(255), nullable=False, unique=True)
     password_hash = db.Column(db.String(255), nullable=False)
     avatar = db.Column(db.String(500))
-    role = db.Column(db.String(100), default='member')
-    department = db.Column(db.String(100))
+    role = db.Column(db.Enum('admin', 'manager', 'member', 'viewer'), default='member')
+    department_id = db.Column(db.String(36), db.ForeignKey('departments.id', ondelete='SET NULL'), nullable=True)
+    department = db.Column(db.String(100))  # Mantido para compatibilidade
     phone = db.Column(db.String(50))
     timezone = db.Column(db.String(100), default='America/Sao_Paulo')
     status = db.Column(db.Enum('active', 'away', 'offline'), default='active')
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = db.Column(db.DateTime, nullable=True)
 
     # Relationships
     settings = db.relationship('UserSettings', backref='user', uselist=False, cascade='all, delete-orphan')
     team_member = db.relationship('TeamMember', backref='user', uselist=False)
     owned_projects = db.relationship('Project', backref='owner', lazy='dynamic')
+    department_ref = db.relationship('Department', backref='users')
 
     def set_password(self, password):
         """Hash and set password"""
@@ -37,6 +40,21 @@ class User(db.Model):
     def check_password(self, password):
         """Verify password"""
         return check_password_hash(self.password_hash, password)
+
+    def soft_delete(self):
+        """Soft delete the user"""
+        self.deleted_at = datetime.utcnow()
+        self.is_active = False
+
+    def restore(self):
+        """Restore a soft deleted user"""
+        self.deleted_at = None
+        self.is_active = True
+
+    @property
+    def is_deleted(self):
+        """Check if user is soft deleted"""
+        return self.deleted_at is not None
 
     def to_dict(self):
         """Convert to dictionary for API response"""
