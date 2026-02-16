@@ -2,7 +2,6 @@
 
 Sistema completo de gerenciamento de projetos com gráfico Gantt interativo, desenvolvido com Flask (Backend) e Next.js (Frontend).
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10+-green.svg)
 ![Next.js](https://img.shields.io/badge/next.js-14-black.svg)
 
@@ -216,10 +215,6 @@ pytest
 cd frontend
 npm test
 ```
-
-## Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
 ## Autor
 
