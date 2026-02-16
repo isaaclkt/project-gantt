@@ -139,8 +139,8 @@ export function ProjectFormDialog({
               <Label>Status</Label>
               <Select
                 value={formData.status}
-                onValueChange={(value: ProjectStatus) =>
-                  setFormData(prev => ({ ...prev, status: value }))
+                onValueChange={(value) =>
+                  setFormData(prev => ({ ...prev, status: value as ProjectStatus }))
                 }
               >
                 <SelectTrigger>

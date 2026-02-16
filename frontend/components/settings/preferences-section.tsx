@@ -1,7 +1,5 @@
 'use client'
 
-import React from "react"
-
 import { useState } from 'react'
 import { UserSettings } from '@/lib/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -149,10 +147,10 @@ export function PreferencesSection({ settings, onUpdate, isLoading }: Preference
             <Label>Visualização Padrão</Label>
             <Select
               value={formData.displayPreferences.defaultView}
-              onValueChange={(value: UserSettings['displayPreferences']['defaultView']) =>
+              onValueChange={(value) =>
                 setFormData(prev => ({
                   ...prev,
-                  displayPreferences: { ...prev.displayPreferences, defaultView: value }
+                  displayPreferences: { ...prev.displayPreferences, defaultView: value as UserSettings['displayPreferences']['defaultView'] }
                 }))
               }
             >

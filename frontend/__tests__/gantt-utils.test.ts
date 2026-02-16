@@ -67,13 +67,15 @@ describe('gantt-utils', () => {
           id: '1', name: 'Task 1', description: '',
           startDate: '2025-06-01', endDate: '2025-06-10',
           status: 'todo', priority: 'medium', progress: 0,
-          assigneeId: 'a1', projectId: 'p1'
+          assigneeId: 'a1', projectId: 'p1',
+          createdAt: '2025-06-01', updatedAt: '2025-06-01'
         },
         {
           id: '2', name: 'Task 2', description: '',
           startDate: '2025-06-05', endDate: '2025-06-20',
           status: 'in-progress', priority: 'high', progress: 50,
-          assigneeId: 'a2', projectId: 'p1'
+          assigneeId: 'a2', projectId: 'p1',
+          createdAt: '2025-06-05', updatedAt: '2025-06-05'
         }
       ]
       const result = calculateDateRange(tasks)
@@ -90,7 +92,8 @@ describe('gantt-utils', () => {
         id: '1', name: 'Task', description: '',
         startDate: '2025-01-05', endDate: '2025-01-10',
         status: 'todo', priority: 'medium', progress: 0,
-        assigneeId: 'a1', projectId: 'p1'
+        assigneeId: 'a1', projectId: 'p1',
+        createdAt: '2025-01-05', updatedAt: '2025-01-05'
       }
       const rangeStart = new Date('2025-01-01')
       const totalDays = 30
@@ -107,7 +110,8 @@ describe('gantt-utils', () => {
         id: '1', name: 'Task', description: '',
         startDate: '2024-12-25', endDate: '2025-01-05',
         status: 'todo', priority: 'medium', progress: 0,
-        assigneeId: 'a1', projectId: 'p1'
+        assigneeId: 'a1', projectId: 'p1',
+        createdAt: '2024-12-25', updatedAt: '2024-12-25'
       }
       const rangeStart = new Date('2025-01-01')
       const result = calculateTaskBarPosition(task, rangeStart, 30)

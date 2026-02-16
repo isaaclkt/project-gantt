@@ -209,8 +209,8 @@ export function TeamMemberFormDialog({
               <Label>Status</Label>
               <Select
                 value={formData.status}
-                onValueChange={(value: MemberStatus) =>
-                  setFormData(prev => ({ ...prev, status: value }))
+                onValueChange={(value) =>
+                  setFormData(prev => ({ ...prev, status: value as MemberStatus }))
                 }
               >
                 <SelectTrigger>

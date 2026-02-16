@@ -11,7 +11,7 @@ interface SelectContextValue {
   value: string
   displayLabel: string
   onValueChange: (value: string, label: string) => void
-  triggerRef: React.RefObject<HTMLButtonElement | null>
+  triggerRef: React.RefObject<HTMLButtonElement>
 }
 
 const SelectContext = React.createContext<SelectContextValue | undefined>(undefined)

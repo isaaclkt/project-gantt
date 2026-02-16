@@ -4,7 +4,7 @@ import * as React from 'react'
 import { CheckIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+interface CheckboxProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'> {
   checked?: boolean
   defaultChecked?: boolean
   onCheckedChange?: (checked: boolean) => void
