@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProjectFlow Gantt - Gerenciamento de Projetos</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-chart-gantt"></i>
+                    <span>ProjectFlow</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-view="dashboard">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-view="projects">
+                    <i class="fas fa-folder"></i>
+                    <span>Projetos</span>
+                </a>
+                <a href="#" class="nav-item" data-view="gantt">
+                    <i class="fas fa-bars-staggered"></i>
+                    <span>Gantt</span>
+                </a>
+                <a href="#" class="nav-item" data-view="tasks">
+                    <i class="fas fa-tasks"></i>
+                    <span>Tarefas</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="theme-toggle" id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                    <span>Modo Escuro</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-left">
+                    <button class="menu-toggle" id="menuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 id="pageTitle">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <button class="btn btn-primary" id="btnNewProject">
+                        <i class="fas fa-plus"></i>
+                        <span>Novo Projeto</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Dashboard View -->
+                <section class="view active" id="dashboardView">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon bg-blue">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div class="metric-info">
+                                <span class="metric-value" id="totalProjects">0</span>
+                                <span class="metric-label">Projetos</span>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon bg-orange">
+                                <i class="fas fa-list-check"></i>
+                            </div>
+                            <div class="metric-info">
+                                <span class="metric-value" id="totalTasks">0</span>
+                                <span class="metric-label">Total Tarefas</span>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon bg-yellow">
+                                <i class="fas fa-spinner"></i>
+                            </div>
+                            <div class="metric-info">
+                                <span class="metric-value" id="doingTasks">0</span>
+                                <span class="metric-label">Em Andamento</span>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon bg-green">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="metric-info">
+                                <span class="metric-value" id="doneTasks">0</span>
+                                <span class="metric-label">Concluídas</span>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon bg-red">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="metric-info">
+                                <span class="metric-value" id="overdueTasks">0</span>
+                                <span class="metric-label">Atrasadas</span>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon bg-purple">
+                                <i class="fas fa-percentage"></i>
+                            </div>
+                            <div class="metric-info">
+                                <span class="metric-value" id="completionRate">0%</span>
+                                <span class="metric-label">Taxa de Conclusão</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Status das Tarefas</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="status-chart" id="statusChart">
+                                    <div class="chart-bars">
+                                        <div class="chart-bar-container">
+                                            <div class="chart-bar todo" data-status="todo">
+                                                <span class="bar-value">0</span>
+                                            </div>
+                                            <span class="bar-label">A Fazer</span>
+                                        </div>
+                                        <div class="chart-bar-container">
+                                            <div class="chart-bar doing" data-status="doing">
+                                                <span class="bar-value">0</span>
+                                            </div>
+                                            <span class="bar-label">Fazendo</span>
+                                        </div>
+                                        <div class="chart-bar-container">
+                                            <div class="chart-bar review" data-status="review">
+                                                <span class="bar-value">0</span>
+                                            </div>
+                                            <span class="bar-label">Revisão</span>
+                                        </div>
+                                        <div class="chart-bar-container">
+                                            <div class="chart-bar done" data-status="done">
+                                                <span class="bar-value">0</span>
+                                            </div>
+                                            <span class="bar-label">Concluído</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Projetos Recentes</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="recent-projects" id="recentProjects">
+                                    <p class="empty-state">Nenhum projeto encontrado</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Projects View -->
+                <section class="view" id="projectsView">
+                    <div class="projects-grid" id="projectsGrid">
+                        <p class="empty-state">Carregando projetos...</p>
+                    </div>
+                </section>
+
+                <!-- Gantt View -->
+                <section class="view" id="ganttView">
+                    <div class="gantt-controls">
+                        <div class="control-group">
+                            <label for="projectSelect">Projeto:</label>
+                            <select id="projectSelect" class="form-control">
+                                <option value="">Todos os Projetos</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label>Zoom:</label>
+                            <div class="btn-group">
+                                <button class="btn btn-sm" data-zoom="day">Dia</button>
+                                <button class="btn btn-sm active" data-zoom="week">Semana</button>
+                                <button class="btn btn-sm" data-zoom="month">Mês</button>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <button class="btn btn-sm" id="btnToday">
+                                <i class="fas fa-calendar-day"></i> Hoje
+                            </button>
+                        </div>
+                    </div>
+                    <div class="gantt-container" id="ganttContainer">
+                        <div class="gantt-chart" id="ganttChart">
+                            <p class="empty-state">Selecione um projeto para visualizar o Gantt</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tasks View -->
+                <section class="view" id="tasksView">
+                    <div class="tasks-filters">
+                        <div class="filter-group">
+                            <select id="filterProject" class="form-control">
+                                <option value="">Todos os Projetos</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <select id="filterStatus" class="form-control">
+                                <option value="">Todos os Status</option>
+                                <option value="todo">A Fazer</option>
+                                <option value="doing">Fazendo</option>
+                                <option value="review">Revisão</option>
+                                <option value="done">Concluído</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" id="btnNewTask">
+                            <i class="fas fa-plus"></i> Nova Tarefa
+                        </button>
+                    </div>
+                    <div class="tasks-table-container">
+                        <table class="tasks-table">
+                            <thead>
+                                <tr>
+                                    <th>Tarefa</th>
+                                    <th>Projeto</th>
+                                    <th>Início</th>
+                                    <th>Fim</th>
+                                    <th>Duração</th>
+                                    <th>Responsável</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tasksTableBody">
+                                <tr>
+                                    <td colspan="8" class="empty-state">Carregando tarefas...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Project Form -->
+    <div class="modal" id="projectModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="projectModalTitle">Novo Projeto</h2>
+                <button class="modal-close" data-close-modal>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="projectForm">
+                <input type="hidden" id="projectId">
+                <div class="form-group">
+                    <label for="projectName">Nome do Projeto *</label>
+                    <input type="text" id="projectName" class="form-control" required
+                           placeholder="Ex: Redesign do Website">
+                </div>
+                <div class="form-group">
+                    <label for="projectDescription">Descrição</label>
+                    <textarea id="projectDescription" class="form-control" rows="4"
+                              placeholder="Descreva o projeto..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Task Form -->
+    <div class="modal" id="taskModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="taskModalTitle">Nova Tarefa</h2>
+                <button class="modal-close" data-close-modal>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="taskForm">
+                <input type="hidden" id="taskId">
+                <div class="form-group">
+                    <label for="taskProject">Projeto *</label>
+                    <select id="taskProject" class="form-control" required>
+                        <option value="">Selecione um projeto</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskName">Nome da Tarefa *</label>
+                    <input type="text" id="taskName" class="form-control" required
+                           placeholder="Ex: Desenvolver tela de login">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="taskStartDate">Data Início *</label>
+                        <input type="date" id="taskStartDate" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskEndDate">Data Fim *</label>
+                        <input type="date" id="taskEndDate" class="form-control" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="taskStatus">Status</label>
+                        <select id="taskStatus" class="form-control">
+                            <option value="todo">A Fazer</option>
+                            <option value="doing">Fazendo</option>
+                            <option value="review">Revisão</option>
+                            <option value="done">Concluído</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskAssignee">Responsável</label>
+                        <input type="text" id="taskAssignee" class="form-control"
+                               placeholder="Ex: João Silva">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Confirm Delete -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2>Confirmar Exclusão</h2>
+                <button class="modal-close" data-close-modal>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Tem certeza que deseja excluir este item?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-close-modal>Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmDelete">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/gantt.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

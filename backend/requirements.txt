@@ -1,0 +1,20 @@
+# ProjectFlow Gantt - Backend Dependencies
+
+# Framework Web
+Flask==3.0.0
+
+# CORS support
+Flask-CORS==4.0.0
+
+# MySQL Connector
+mysql-connector-python==8.2.0
+
+# Variáveis de ambiente (opcional)
+python-dotenv==1.0.0
+
+# Servidor de produção (opcional)
+gunicorn==21.2.0
+
+# Ferramentas de desenvolvimento (opcional)
+pytest==7.4.3
+pytest-cov==4.1.0
