@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import useSWR, { mutate } from 'swr'
 import { DashboardLayout } from '@/components/layout'
-import { ProjectCard, ProjectFormDialog, ProjectDetailDialog } from '@/components/projects'
+import { ProjectCard, ProjectFormDialog, ProjectDetailDialog, ShareDialog } from '@/components/projects'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -37,7 +37,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/contexts/auth-context'
-import { canCreateProject, canEditProject, canDeleteProject } from '@/lib/permissions'
+import { canCreateProject, canEditProject, canDeleteProject, canShareProject } from '@/lib/permissions'
 
 type ViewMode = 'grid' | 'list'
 
@@ -81,6 +81,7 @@ export default function ProjectsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isShareOpen, setIsShareOpen] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -169,6 +170,11 @@ export default function ProjectsPage() {
     setIsDeleteOpen(true)
   }
 
+  const handleShare = (project: Project) => {
+    setSelectedProject(project)
+    setIsShareOpen(true)
+  }
+
   const handleOpenCreate = () => {
     setSelectedProject(null)
     setIsFormOpen(true)
@@ -186,6 +192,11 @@ export default function ProjectsPage() {
 
   const handleDeleteOpenChange = useCallback((open: boolean) => {
     setIsDeleteOpen(open)
+  }, [])
+
+  const handleShareOpenChange = useCallback((open: boolean) => {
+    setIsShareOpen(open)
+    if (!open) setSelectedProject(null)
   }, [])
 
   if (authLoading) {
@@ -312,6 +323,7 @@ export default function ProjectsPage() {
                 onView={handleView}
                 onEdit={userRole && canEditProject(userRole) ? handleEdit : undefined}
                 onDelete={userRole && canDeleteProject(userRole) ? handleDelete : undefined}
+                onShare={userRole && canShareProject(userRole) ? handleShare : undefined}
               />
             ))}
           </div>
@@ -363,6 +375,15 @@ export default function ProjectsPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+      )}
+
+      {/* Share Dialog */}
+      {isShareOpen && (
+        <ShareDialog
+          open={isShareOpen}
+          onOpenChange={handleShareOpenChange}
+          project={selectedProject}
+        />
       )}
     </DashboardLayout>
   )

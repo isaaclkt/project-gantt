@@ -113,22 +113,22 @@ export default function LoginPage() {
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="bg-secondary p-2 rounded">
                   <p className="font-semibold">Admin</p>
-                  <p>admin@empresa.com</p>
+                  <p>admin@projectflow.com</p>
                   <p>admin123</p>
                 </div>
                 <div className="bg-secondary p-2 rounded">
-                  <p className="font-semibold">Manager</p>
-                  <p>ana.silva@empresa.com</p>
-                  <p>password123</p>
+                  <p className="font-semibold">Gerente</p>
+                  <p>gerente@projectflow.com</p>
+                  <p>gerente123</p>
                 </div>
                 <div className="bg-secondary p-2 rounded">
-                  <p className="font-semibold">Member</p>
-                  <p>carlos.santos@empresa.com</p>
-                  <p>password123</p>
+                  <p className="font-semibold">Membro</p>
+                  <p>membro@projectflow.com</p>
+                  <p>membro123</p>
                 </div>
                 <div className="bg-secondary p-2 rounded">
-                  <p className="font-semibold">Viewer</p>
-                  <p>cliente@empresa.com</p>
+                  <p className="font-semibold">Visualizador</p>
+                  <p>viewer@projectflow.com</p>
                   <p>viewer123</p>
                 </div>
               </div>

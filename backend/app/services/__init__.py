@@ -7,6 +7,7 @@ from .team_service import TeamService
 from .user_service import UserService, UserSettingsService
 from .admin_service import DepartmentService, RoleService
 from .insights_service import InsightsService
+from .share_link_service import ShareLinkService
 
 __all__ = [
     'ProjectService',
@@ -16,5 +17,6 @@ __all__ = [
     'UserSettingsService',
     'DepartmentService',
     'RoleService',
-    'InsightsService'
+    'InsightsService',
+    'ShareLinkService'
 ]

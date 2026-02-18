@@ -48,6 +48,7 @@ export function TeamMemberFormDialog({
     name: '',
     email: '',
     role: '',
+    password: '',
     department: '',
     status: 'active'
   })
@@ -98,6 +99,7 @@ export function TeamMemberFormDialog({
         name: member.name,
         email: member.email,
         role: member.role,
+        password: '',  // Don't show password when editing
         department: member.department || '',
         status: member.status
       })
@@ -106,6 +108,7 @@ export function TeamMemberFormDialog({
         name: '',
         email: '',
         role: '',
+        password: '',
         department: '',
         status: 'active'
       })
@@ -151,6 +154,25 @@ export function TeamMemberFormDialog({
                 required
               />
             </div>
+
+            {/* Password - only show when creating new member */}
+            {!member && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha Inicial</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="Mínimo 8 caracteres"
+                  minLength={8}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  O membro poderá alterar a senha após o primeiro login.
+                </p>
+              </div>
+            )}
 
             {/* Role */}
             <div className="space-y-2">

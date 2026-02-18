@@ -1,8 +1,28 @@
 # Root level gitignore for project-grantt
 
-# Package manager artifacts
-package-lock.json
+# Environment files (IMPORTANT: never commit credentials!)
+.env
+.env.local
+.env.*.local
+
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Node.js
 node_modules/
+package-lock.json
+
+# Next.js
+.next/
+out/
 
 # Windows artifacts
 nul

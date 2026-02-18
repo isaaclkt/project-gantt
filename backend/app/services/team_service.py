@@ -1,9 +1,10 @@
 """
 Team Service - Business logic for team members
 """
+import uuid
 from typing import Optional, List
 from app.config.database import db
-from app.models import TeamMember
+from app.models import TeamMember, User, UserSettings
 
 
 class TeamService:
@@ -51,16 +52,62 @@ class TeamService:
     @staticmethod
     def create(data: dict) -> TeamMember:
         """
-        Create a new team member
+        Create a new team member (and associated user if not provided)
+
+        Args:
+            data: dict with keys:
+                - name: str (required)
+                - email: str (required)
+                - role: str (required) - job role/title
+                - password: str (required when creating new user, min 8 chars)
+                - department: str (optional)
+                - status: str (optional, default 'active')
+                - userId: str (optional, link to existing user)
         """
+        user_id = data.get('userId')
+        password = data.get('password')
+
+        # If no user_id provided, create a new user first
+        if not user_id:
+            # Check if user with this email already exists
+            existing_user = User.query.filter_by(email=data['email']).first()
+            if existing_user:
+                user_id = existing_user.id
+            else:
+                # Validate password for new user
+                if not password:
+                    raise ValueError('Senha é obrigatória para criar um novo membro')
+                if len(password) < 8:
+                    raise ValueError('Senha deve ter no mínimo 8 caracteres')
+
+                # Create new user with provided password
+                user = User(
+                    id=str(uuid.uuid4()),
+                    name=data['name'],
+                    email=data['email'],
+                    avatar=data.get('avatar') or f"https://api.dicebear.com/7.x/avataaars/svg?seed={data['name']}",
+                    role='member',  # Default system role
+                    department=data.get('department'),
+                    status=data.get('status', 'active')
+                )
+                user.set_password(password)  # Use admin-provided password
+                db.session.add(user)
+                db.session.flush()  # Get the user ID
+                user_id = user.id
+
+                # Create user settings
+                settings = UserSettings(user_id=user_id)
+                db.session.add(settings)
+
         team_member = TeamMember(
             name=data['name'],
             email=data['email'],
             avatar=data.get('avatar') or f"https://api.dicebear.com/7.x/avataaars/svg?seed={data['name']}",
             role=data['role'],
             department=data.get('department'),
+            job_title=data.get('jobTitle'),
             status=data.get('status', 'active'),
-            user_id=data.get('userId')
+            user_id=user_id
         )
 
         db.session.add(team_member)

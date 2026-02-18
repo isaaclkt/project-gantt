@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Eye, Pencil, Trash2, Calendar, Users } from 'lucide-react'
+import { MoreHorizontal, Eye, Pencil, Trash2, Calendar, Users, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ProjectCardProps {
@@ -21,6 +21,7 @@ interface ProjectCardProps {
   onView: (project: Project) => void
   onEdit?: (project: Project) => void
   onDelete?: (project: Project) => void
+  onShare?: (project: Project) => void
 }
 
 const statusConfig: Record<Project['status'], { label: string; className: string }> = {
@@ -30,7 +31,7 @@ const statusConfig: Record<Project['status'], { label: string; className: string
   completed: { label: 'Concluído', className: 'bg-status-completed/20 text-status-completed border-status-completed/30' }
 }
 
-export function ProjectCard({ project, teamMembers, onView, onEdit, onDelete }: ProjectCardProps) {
+export function ProjectCard({ project, teamMembers, onView, onEdit, onDelete, onShare }: ProjectCardProps) {
   const status = statusConfig[project.status]
   const projectMembers = teamMembers.filter(m => project.teamMemberIds.includes(m.id))
   const displayedMembers = projectMembers.slice(0, 4)
@@ -71,6 +72,12 @@ export function ProjectCard({ project, teamMembers, onView, onEdit, onDelete }: 
                 <Eye className="h-4 w-4 mr-2" />
                 Ver Detalhes
               </DropdownMenuItem>
+              {onShare && (
+                <DropdownMenuItem onClick={() => onShare(project)}>
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Compartilhar
+                </DropdownMenuItem>
+              )}
               {onEdit && (
                 <DropdownMenuItem onClick={() => onEdit(project)}>
                   <Pencil className="h-4 w-4 mr-2" />

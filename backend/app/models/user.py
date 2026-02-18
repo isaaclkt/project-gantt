@@ -16,7 +16,7 @@ class User(db.Model):
     email = db.Column(db.String(255), nullable=False, unique=True)
     password_hash = db.Column(db.String(255), nullable=False)
     avatar = db.Column(db.String(500))
-    role = db.Column(db.Enum('admin', 'manager', 'member', 'viewer'), default='member')
+    role = db.Column(db.Enum('admin', 'department_admin', 'manager', 'member', 'viewer'), default='member')
     department_id = db.Column(db.String(36), db.ForeignKey('departments.id', ondelete='SET NULL'), nullable=True)
     department = db.Column(db.String(100))  # Mantido para compatibilidade
     phone = db.Column(db.String(50))
@@ -31,7 +31,7 @@ class User(db.Model):
     settings = db.relationship('UserSettings', backref='user', uselist=False, cascade='all, delete-orphan')
     team_member = db.relationship('TeamMember', backref='user', uselist=False)
     owned_projects = db.relationship('Project', backref='owner', lazy='dynamic')
-    department_ref = db.relationship('Department', backref='users')
+    department_ref = db.relationship('Department', foreign_keys=[department_id], backref='users')
 
     def set_password(self, password):
         """Hash and set password"""

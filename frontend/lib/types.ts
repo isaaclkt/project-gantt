@@ -7,6 +7,9 @@ export type GanttViewMode = 'day' | 'week' | 'month'
 // Team member status
 export type MemberStatus = 'active' | 'away' | 'offline'
 
+// User roles (system access levels)
+export type UserRole = 'admin' | 'department_admin' | 'manager' | 'member' | 'viewer'
+
 // Team member interface
 export interface TeamMember {
   id: string
@@ -139,6 +142,7 @@ export interface CreateTeamMemberInput {
   name: string
   email: string
   role: string
+  password?: string  // Required when creating new member, optional when editing
   department?: string
   status: MemberStatus
 }

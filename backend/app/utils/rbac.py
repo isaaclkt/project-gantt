@@ -19,12 +19,13 @@ class Role(str, Enum):
     """
     System roles with hierarchical permissions.
 
-    Hierarchy: ADMIN > MANAGER > MEMBER > VIEWER
+    Hierarchy: ADMIN > DEPARTMENT_ADMIN > MANAGER > MEMBER > VIEWER
     """
-    ADMIN = 'admin'           # Full system access
-    MANAGER = 'manager'       # Can manage projects and teams
-    MEMBER = 'member'         # Can work on assigned tasks
-    VIEWER = 'viewer'         # Read-only access
+    ADMIN = 'admin'                     # Full system access
+    DEPARTMENT_ADMIN = 'department_admin'  # Manages their department only
+    MANAGER = 'manager'                 # Can manage projects and teams
+    MEMBER = 'member'                   # Can work on assigned tasks
+    VIEWER = 'viewer'                   # Read-only access
 
     @classmethod
     def values(cls) -> List[str]:
@@ -40,7 +41,8 @@ ROLE_HIERARCHY = {
     Role.VIEWER.value: 0,
     Role.MEMBER.value: 1,
     Role.MANAGER.value: 2,
-    Role.ADMIN.value: 3,
+    Role.DEPARTMENT_ADMIN.value: 3,
+    Role.ADMIN.value: 4,
 }
 
 
@@ -72,6 +74,10 @@ class Permission(str, Enum):
     # Team permissions
     VIEW_TEAM = 'view_team'
     MANAGE_TEAM = 'manage_team'
+
+    # Department Admin permissions
+    MANAGE_DEPARTMENT_MEMBERS = 'manage_department_members'
+    MANAGE_DEPARTMENT_PROJECTS = 'manage_department_projects'
 
     # Admin permissions
     MANAGE_DEPARTMENTS = 'manage_departments'
@@ -108,6 +114,23 @@ ROLE_PERMISSIONS = {
         Permission.ASSIGN_TASKS,
         Permission.VIEW_TEAM,
         Permission.MANAGE_TEAM,
+    ],
+    Role.DEPARTMENT_ADMIN.value: [
+        # Department admin can manage their department
+        Permission.VIEW_USERS,
+        Permission.VIEW_PROJECTS,
+        Permission.CREATE_PROJECTS,
+        Permission.EDIT_PROJECTS,
+        Permission.MANAGE_PROJECT_MEMBERS,
+        Permission.VIEW_TASKS,
+        Permission.CREATE_TASKS,
+        Permission.EDIT_TASKS,
+        Permission.DELETE_TASKS,
+        Permission.ASSIGN_TASKS,
+        Permission.VIEW_TEAM,
+        Permission.MANAGE_TEAM,
+        Permission.MANAGE_DEPARTMENT_MEMBERS,
+        Permission.MANAGE_DEPARTMENT_PROJECTS,
     ],
     Role.ADMIN.value: [
         # Admin has all permissions
@@ -491,6 +514,115 @@ def require_self_or_admin(user_id_param: str = 'user_id'):
                 return f(*args, **kwargs)
 
             return error_response('Access denied', 403)
+
+        return decorated_function
+    return decorator
+
+
+# ============================================
+# Department Admin Functions
+# ============================================
+
+def get_user_department_id(user_id: str) -> Optional[str]:
+    """Get the department ID for a user."""
+    from app.services import UserService
+    user = UserService.get_by_id(user_id)
+    if user:
+        return user.department_id
+    return None
+
+
+def is_department_admin_of(user_id: str, department_id: str) -> bool:
+    """
+    Check if user is the admin of a specific department.
+
+    Args:
+        user_id: The user's ID
+        department_id: The department ID to check
+
+    Returns:
+        True if user is the admin of that department
+    """
+    from app.models import Department
+    department = Department.query.get(department_id)
+    if department:
+        return department.admin_id == user_id
+    return False
+
+
+def is_user_in_department(user_id: str, department_id: str) -> bool:
+    """Check if a user belongs to a specific department."""
+    from app.services import UserService
+    user = UserService.get_by_id(user_id)
+    if user:
+        return user.department_id == department_id
+    return False
+
+
+def require_department_admin(f):
+    """Shortcut decorator for department admin routes."""
+    return require_role(Role.DEPARTMENT_ADMIN.value)(f)
+
+
+def require_department_access(allow_own_department: bool = True):
+    """
+    Decorator to check department-level access.
+
+    For department admins, this checks if the target resource
+    belongs to their department.
+
+    Args:
+        allow_own_department: Allow access if target is in user's department
+    """
+    def decorator(f):
+        @wraps(f)
+        @jwt_required()
+        def decorated_function(*args, **kwargs):
+            user_id = get_jwt_identity()
+
+            from app.services import UserService
+            user = UserService.get_by_id(user_id)
+
+            if not user:
+                return error_response('User not found', 404)
+
+            if not user.is_active:
+                return error_response('User account is deactivated', 403)
+
+            user_role = user.role or Role.MEMBER.value
+
+            # Admin always has access
+            if has_role(user_role, Role.ADMIN.value):
+                g.current_user = user
+                return f(*args, **kwargs)
+
+            # For department admin, check department membership
+            if user_role == Role.DEPARTMENT_ADMIN.value and allow_own_department:
+                # Get target member's department from kwargs
+                target_member_id = kwargs.get('member_id')
+
+                if target_member_id:
+                    from app.models import TeamMember
+                    target_member = TeamMember.query.get(target_member_id)
+
+                    if target_member and target_member.user:
+                        # Check if target is in same department
+                        if target_member.user.department_id == user.department_id:
+                            g.current_user = user
+                            return f(*args, **kwargs)
+                        else:
+                            return error_response('Você só pode gerenciar membros do seu departamento', 403)
+
+                # If no specific member, allow access (for listing)
+                g.current_user = user
+                return f(*args, **kwargs)
+
+            # For regular managers, use standard permission check
+            if has_role(user_role, Role.MANAGER.value):
+                g.current_user = user
+                return f(*args, **kwargs)
+
+            return error_response('Permissão negada', 403)
 
         return decorated_function
     return decorator

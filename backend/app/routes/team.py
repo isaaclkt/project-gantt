@@ -17,7 +17,10 @@ from app.utils.rbac import (
     require_auth,
     require_permission,
     require_manager,
-    Permission
+    require_department_access,
+    Permission,
+    Role,
+    has_role
 )
 
 team_bp = Blueprint('team', __name__, url_prefix='/api/team')
@@ -37,11 +40,19 @@ def get_team_members():
         - limit: Items per page (default: 50, max: 100)
 
     Response: PaginatedResponse<TeamMember[]>
+
+    Note: Department admins only see members from their own department.
     """
     department = request.args.get('department')
     status = request.args.get('status')
     page = request.pagination['page']
     limit = request.pagination['limit']
+
+    # Department admins can only see members from their department
+    current_user = g.current_user
+    if current_user.role == Role.DEPARTMENT_ADMIN.value:
+        # Force filter to their department only
+        department = current_user.department
 
     team_members, total = TeamService.get_all(
         department=department,
@@ -77,7 +88,7 @@ def get_team_member(team_member_id):
 @team_bp.route('', methods=['POST'])
 @require_permission(Permission.MANAGE_TEAM)
 @validate_json
-@validate_required_fields(['name', 'email', 'role'])
+@validate_required_fields(['name', 'email', 'role', 'password'])
 def create_team_member():
     """
     Create a new team member (Manager+ only)
@@ -85,13 +96,19 @@ def create_team_member():
     Body (CreateTeamMemberInput):
         - name: string (required)
         - email: string (required)
-        - role: string (required)
+        - role: string (required) - job title/role
+        - password: string (required, min 8 chars) - initial password for the member
         - department: string
         - status: 'active' | 'away' | 'offline'
 
     Response: ApiResponse<TeamMember>
     """
     data = request.get_json()
+
+    # Validate password length
+    password = data.get('password', '')
+    if len(password) < 8:
+        return error_response('Senha deve ter no mínimo 8 caracteres', 400)
 
     # Check if email already exists
     existing = TeamService.get_by_email(data['email'])
@@ -126,8 +143,21 @@ def update_team_member(team_member_id):
         - status: 'active' | 'away' | 'offline'
 
     Response: ApiResponse<TeamMember>
+
+    Note: Department admins can only edit members from their department.
     """
     data = request.get_json()
+    current_user = g.current_user
+
+    # Get target member first
+    target_member = TeamService.get_by_id(team_member_id)
+    if not target_member:
+        return error_response('Team member not found', 404)
+
+    # Department admin can only edit members from their department
+    if current_user.role == Role.DEPARTMENT_ADMIN.value:
+        if target_member.department != current_user.department:
+            return error_response('Você só pode editar membros do seu departamento', 403)
 
     # Check if email is being changed to one that already exists
     if 'email' in data:
@@ -158,7 +188,21 @@ def delete_team_member(team_member_id):
     Delete a team member (Manager+ only)
 
     Response: ApiResponse<null>
+
+    Note: Department admins can only delete members from their department.
     """
+    current_user = g.current_user
+
+    # Get target member first
+    target_member = TeamService.get_by_id(team_member_id)
+    if not target_member:
+        return error_response('Team member not found', 404)
+
+    # Department admin can only delete members from their department
+    if current_user.role == Role.DEPARTMENT_ADMIN.value:
+        if target_member.department != current_user.department:
+            return error_response('Você só pode excluir membros do seu departamento', 403)
+
     success = TeamService.delete(team_member_id)
 
     if not success:

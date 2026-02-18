@@ -4,7 +4,7 @@ Admin API Routes - Departments and Roles management
 All routes require admin role.
 """
 from flask import Blueprint, request
-from app.services import DepartmentService, RoleService
+from app.services import DepartmentService, RoleService, UserService
 from app.utils import (
     api_response,
     error_response,
@@ -111,6 +111,89 @@ def delete_department(department_id):
         return error_response('Department not found', 404)
 
     return api_response(data=None, message='Department deleted successfully')
+
+
+@admin_bp.route('/departments/<department_id>/admin', methods=['PUT'])
+@require_permission(Permission.MANAGE_DEPARTMENTS)
+@validate_json
+@validate_required_fields(['userId'])
+def assign_department_admin(department_id):
+    """
+    Assign an admin to a department (Admin only)
+
+    Body: { userId: string }
+    Response: ApiResponse<Department>
+
+    Note: This also updates the user's role to 'department_admin'.
+    """
+    data = request.get_json()
+    user_id = data['userId']
+
+    # Check if department exists
+    department = DepartmentService.get_by_id(department_id)
+    if not department:
+        return error_response('Department not found', 404)
+
+    # Check if user exists
+    user = UserService.get_by_id(user_id)
+    if not user:
+        return error_response('User not found', 404)
+
+    # Check if user is already admin of another department
+    from app.models import Department
+    existing_dept = Department.query.filter_by(admin_id=user_id).first()
+    if existing_dept and existing_dept.id != department_id:
+        return error_response(f'Este usuário já é administrador do departamento "{existing_dept.name}"', 409)
+
+    try:
+        # Update department admin
+        updated_dept = DepartmentService.set_admin(department_id, user_id)
+
+        # Update user role to department_admin
+        UserService.update(user_id, {'role': 'department_admin'})
+
+        return api_response(
+            data=updated_dept.to_dict(),
+            message=f'{user.name} foi definido como administrador do departamento'
+        )
+    except Exception as e:
+        return error_response(f'Falha ao atribuir administrador: {str(e)}', 500)
+
+
+@admin_bp.route('/departments/<department_id>/admin', methods=['DELETE'])
+@require_permission(Permission.MANAGE_DEPARTMENTS)
+def remove_department_admin(department_id):
+    """
+    Remove admin from a department (Admin only)
+    Response: ApiResponse<Department>
+
+    Note: This also changes the user's role back to 'manager'.
+    """
+    # Check if department exists
+    department = DepartmentService.get_by_id(department_id)
+    if not department:
+        return error_response('Department not found', 404)
+
+    if not department.admin_id:
+        return error_response('Este departamento não possui um administrador', 400)
+
+    try:
+        old_admin_id = department.admin_id
+
+        # Remove admin from department
+        updated_dept = DepartmentService.set_admin(department_id, None)
+
+        # Change user role back to manager (or keep as is if admin)
+        old_admin = UserService.get_by_id(old_admin_id)
+        if old_admin and old_admin.role == 'department_admin':
+            UserService.update(old_admin_id, {'role': 'manager'})
+
+        return api_response(
+            data=updated_dept.to_dict(),
+            message='Administrador removido do departamento'
+        )
+    except Exception as e:
+        return error_response(f'Falha ao remover administrador: {str(e)}', 500)
 
 
 # ============================================

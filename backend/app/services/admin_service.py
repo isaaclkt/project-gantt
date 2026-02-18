@@ -63,6 +63,26 @@ class DepartmentService:
         db.session.commit()
         return True
 
+    @staticmethod
+    def set_admin(department_id: str, admin_id: Optional[str]) -> Optional[Department]:
+        """
+        Set or remove the admin of a department.
+
+        Args:
+            department_id: The department ID
+            admin_id: The user ID to set as admin, or None to remove
+
+        Returns:
+            The updated department or None if not found
+        """
+        department = Department.query.get(department_id)
+        if not department:
+            return None
+
+        department.admin_id = admin_id
+        db.session.commit()
+        return department
+
 
 class RoleService:
     """Service class for role operations"""

@@ -1,73 +1,331 @@
-# Project Gantt
+# ProjectFlow - Sistema de Gerenciamento de Projetos
 
-Sistema completo de gerenciamento de projetos com gráfico Gantt interativo, desenvolvido com Flask (Backend) e Next.js (Frontend).
+Sistema completo de gerenciamento de projetos com visualizacao Gantt interativo, controle de tarefas, equipes, compartilhamento publico e hierarquia de departamentos.
 
-![Python](https://img.shields.io/badge/python-3.10+-green.svg)
-![Next.js](https://img.shields.io/badge/next.js-14-black.svg)
+![Python](https://img.shields.io/badge/python-3.12+-green.svg)
+![Next.js](https://img.shields.io/badge/next.js-16-black.svg)
+![MySQL](https://img.shields.io/badge/mysql-8.0-blue.svg)
 
-## Funcionalidades
-
-### Dashboard
-- Gráfico Gantt interativo com visualização de tarefas
-- Painel de Insights Inteligentes com alertas automáticos
-- Estatísticas de projetos e tarefas em tempo real
-- Criação rápida de tarefas
-
-### Gerenciamento de Projetos
-- CRUD completo de projetos
-- Atribuição de membros da equipe
-- Acompanhamento de progresso
-- Status: Planejamento, Em Andamento, Concluído, Cancelado
-
-### Gerenciamento de Tarefas
-- CRUD completo de tarefas
-- Prioridades: Baixa, Média, Alta, Crítica
-- Status: Pendente, Em Progresso, Concluída, Cancelada
-- Atribuição a membros da equipe
-- Datas de início e término
-
-### Equipe
-- Cadastro de membros da equipe
-- Departamentos e cargos
-- Vinculação com usuários do sistema
-- Visualização de carga de trabalho
-
-### Insights Inteligentes
-- Alertas de tarefas atrasadas
-- Projetos com risco de atraso
-- Membros sobrecarregados
-- Tarefas sem responsável
-- Resumo de produtividade
-
-### Configurações
-- Tema claro/escuro
-- Idioma (Português BR)
-- Configurações de notificações
-- Atualização de perfil e senha
+---
 
 ## Tecnologias
 
 ### Backend
-- **Flask** - Framework web Python
+- **Python 3.12** + **Flask** - Framework web
 - **SQLAlchemy** - ORM para banco de dados
-- **JWT** - Autenticação com tokens
-- **SQLite** - Banco de dados (configurável)
+- **MySQL 8.0** - Banco de dados relacional
+- **Flask-JWT-Extended** - Autenticacao JWT
+- **Werkzeug** - Hash seguro de senhas
+- **Flask-CORS** - Cross-Origin Resource Sharing
 
 ### Frontend
-- **Next.js 14** - Framework React
-- **TypeScript** - Tipagem estática
-- **Tailwind CSS** - Estilização
-- **shadcn/ui** - Componentes UI
-- **Recharts** - Gráficos
+- **Next.js 16** - Framework React com App Router
+- **TypeScript** - Tipagem estatica
+- **Tailwind CSS** - Estilizacao utilitaria
+- **Radix UI** - Componentes acessiveis
+- **shadcn/ui** - Biblioteca de componentes
+- **SWR** - Cache e revalidacao de dados
+- **Lucide Icons** - Icones
 
-## Instalação
+---
 
-### Pré-requisitos
-- Python 3.10+
+## Funcionalidades
+
+### 1. Autenticacao e Autorizacao (RBAC)
+
+Sistema completo de controle de acesso baseado em roles:
+
+| Role | Nivel | Descricao | Permissoes |
+|------|-------|-----------|------------|
+| `admin` | 4 | Administrador Global | Acesso total ao sistema |
+| `department_admin` | 3 | Admin de Departamento | Gerencia apenas seu departamento |
+| `manager` | 2 | Gerente | Gerencia projetos e equipes |
+| `member` | 1 | Membro | Trabalha em tarefas atribuidas |
+| `viewer` | 0 | Visualizador | Apenas visualizacao |
+
+**Recursos:**
+- Login com email/senha
+- Tokens JWT com expiracao
+- Alteracao de senha
+- Sessoes seguras
+
+### 2. Dashboard
+
+- Grafico Gantt interativo com visualizacao de tarefas
+- Painel de Insights Inteligentes com alertas automaticos
+- Estatisticas de projetos e tarefas em tempo real
+- Criacao rapida de tarefas
+- Visao geral de projetos ativos
+
+### 3. Gerenciamento de Projetos
+
+- CRUD completo de projetos
+- Status: `planning`, `active`, `on-hold`, `completed`
+- Atribuicao de membros da equipe
+- Cores personalizadas para identificacao visual
+- Progresso automatico calculado pelas tarefas
+- Datas de inicio e termino
+
+### 4. Gerenciamento de Tarefas
+
+- CRUD completo de tarefas
+- Status: `todo`, `in-progress`, `review`, `completed`
+- Prioridades: `low`, `medium`, `high`
+- Atribuicao de responsavel
+- Progresso de 0-100%
+- Visualizacao no Gantt
+
+### 5. Gerenciamento de Equipe
+
+- Cadastro de membros com senha definida pelo administrador
+- Minimo 8 caracteres para senha
+- Atribuicao de departamentos
+- Controle de status: `active`, `away`, `offline`
+- Vinculacao automatica com usuario do sistema
+
+### 6. Links de Compartilhamento
+
+Permite compartilhar projetos publicamente sem necessidade de login:
+
+- Geracao de links temporarios seguros
+- Tokens de 32 bytes (secrets.token_urlsafe)
+- Expiracao configuravel (1-30 dias)
+- Visualizacao publica do Gantt
+- Botao de copiar link
+
+### 7. Hierarquia de Departamentos
+
+- Cada departamento pode ter 1 administrador
+- Admin de departamento gerencia APENAS seu departamento
+- Restricao automatica de visualizacao e edicao
+- Endpoints para atribuir/remover admin de departamento
+
+### 8. Insights Inteligentes
+
+- Alertas de tarefas atrasadas
+- Projetos com risco de atraso
+- Membros sobrecarregados
+- Tarefas sem responsavel
+- Resumo de produtividade
+
+### 9. Configuracoes do Usuario
+
+- Tema: `light`, `dark`, `system`
+- Idioma: Portugues BR
+- Preferencias de notificacao
+- Preferencias de exibicao
+- Atualizacao de perfil e avatar
+
+---
+
+## Estrutura do Projeto
+
+```
+project-grantt/
+├── backend/
+│   ├── app/
+│   │   ├── config/           # Configuracoes (database, app)
+│   │   ├── models/           # Modelos SQLAlchemy
+│   │   │   ├── user.py       # User, UserSettings
+│   │   │   ├── project.py    # Project
+│   │   │   ├── task.py       # Task
+│   │   │   ├── team_member.py
+│   │   │   ├── department.py # Department, Role
+│   │   │   └── share_link.py # ShareLink
+│   │   ├── routes/           # Rotas da API
+│   │   │   ├── auth.py       # Autenticacao
+│   │   │   ├── projects.py   # Projetos
+│   │   │   ├── tasks.py      # Tarefas
+│   │   │   ├── team.py       # Equipe
+│   │   │   ├── admin.py      # Administracao
+│   │   │   ├── share.py      # Compartilhamento
+│   │   │   ├── settings.py   # Configuracoes
+│   │   │   └── insights.py   # Insights
+│   │   ├── services/         # Logica de negocio
+│   │   └── utils/            # Utilitarios
+│   │       ├── rbac.py       # Role-Based Access Control
+│   │       ├── response.py   # Respostas padronizadas
+│   │       └── validators.py # Validadores
+│   ├── migrations/           # Scripts SQL
+│   │   └── schema.sql        # Schema completo
+│   ├── scripts/
+│   │   └── seed_database.py  # Popular dados de teste
+│   ├── .env                  # Variaveis de ambiente
+│   └── run.py                # Ponto de entrada
+│
+└── frontend/
+    ├── app/                  # Paginas Next.js (App Router)
+    │   ├── page.tsx          # Dashboard
+    │   ├── login/            # Pagina de login
+    │   ├── projects/         # Pagina de projetos
+    │   ├── tasks/            # Pagina de tarefas
+    │   ├── team/             # Pagina da equipe
+    │   ├── settings/         # Configuracoes
+    │   └── shared/[token]/   # Visualizacao publica
+    ├── components/           # Componentes React
+    │   ├── ui/               # Componentes base (shadcn/ui)
+    │   ├── layout/           # DashboardLayout, Header, Sidebar
+    │   ├── gantt/            # Grafico Gantt
+    │   ├── dashboard/        # Componentes do dashboard
+    │   ├── projects/         # ProjectCard, ProjectFormDialog, ShareDialog
+    │   ├── tasks/            # TaskCard, TaskFormDialog
+    │   └── team/             # TeamMemberCard, TeamMemberFormDialog
+    ├── contexts/             # Contextos React
+    │   └── auth-context.tsx  # Contexto de autenticacao
+    └── lib/                  # Utilitarios e services
+        ├── services/         # Chamadas API
+        │   ├── auth-service.ts
+        │   ├── project-service.ts
+        │   ├── task-service.ts
+        │   ├── team-service.ts
+        │   ├── share-service.ts
+        │   └── settings-service.ts
+        ├── types.ts          # Tipos TypeScript
+        ├── permissions.ts    # Helpers de permissao
+        └── utils.ts          # Utilitarios gerais
+```
+
+---
+
+## Banco de Dados
+
+### Tabelas
+
+| Tabela | Descricao |
+|--------|-----------|
+| `departments` | Departamentos da organizacao |
+| `roles` | Cargos/funcoes (job titles) |
+| `users` | Usuarios do sistema |
+| `user_settings` | Configuracoes do usuario |
+| `team_members` | Membros da equipe |
+| `projects` | Projetos |
+| `project_members` | Relacao N:M projeto-membro |
+| `tasks` | Tarefas |
+| `share_links` | Links de compartilhamento |
+
+### Diagrama de Relacionamentos
+
+```
+departments 1---1 users (admin_id)
+departments 1---* users (department_id)
+
+users 1---1 user_settings
+users 1---1 team_members
+users 1---* projects (owner_id)
+users 1---* share_links (created_by)
+
+projects *---* team_members (via project_members)
+projects 1---* tasks
+projects 1---* share_links
+
+team_members 1---* tasks (assignee_id)
+```
+
+### Views
+
+- `v_tasks_detailed` - Tarefas com informacoes de projeto e responsavel
+- `v_projects_summary` - Projetos com contagem de membros e tarefas
+
+### Triggers
+
+- `after_task_update` - Atualiza progresso do projeto
+- `after_task_insert` - Atualiza progresso do projeto
+- `after_task_delete` - Atualiza progresso do projeto
+
+---
+
+## API Endpoints
+
+### Autenticacao
+| Metodo | Endpoint | Auth | Descricao |
+|--------|----------|------|-----------|
+| POST | `/api/auth/login` | - | Login |
+| POST | `/api/auth/logout` | JWT | Logout |
+| GET | `/api/auth/me` | JWT | Usuario atual |
+| PUT | `/api/auth/change-password` | JWT | Alterar senha |
+
+### Projetos
+| Metodo | Endpoint | Auth | Descricao |
+|--------|----------|------|-----------|
+| GET | `/api/projects` | JWT | Listar projetos |
+| POST | `/api/projects` | Manager+ | Criar projeto |
+| GET | `/api/projects/:id` | JWT | Obter projeto |
+| PUT | `/api/projects/:id` | Manager+ | Atualizar projeto |
+| DELETE | `/api/projects/:id` | Admin | Excluir projeto |
+
+### Tarefas
+| Metodo | Endpoint | Auth | Descricao |
+|--------|----------|------|-----------|
+| GET | `/api/tasks` | JWT | Listar tarefas |
+| POST | `/api/tasks` | Member+ | Criar tarefa |
+| GET | `/api/tasks/:id` | JWT | Obter tarefa |
+| PUT | `/api/tasks/:id` | Member+ | Atualizar tarefa |
+| DELETE | `/api/tasks/:id` | Manager+ | Excluir tarefa |
+
+### Equipe
+| Metodo | Endpoint | Auth | Descricao |
+|--------|----------|------|-----------|
+| GET | `/api/team` | JWT | Listar membros |
+| POST | `/api/team` | Manager+ | Criar membro (requer senha) |
+| GET | `/api/team/:id` | JWT | Obter membro |
+| PUT | `/api/team/:id` | Manager+ | Atualizar membro |
+| DELETE | `/api/team/:id` | Manager+ | Excluir membro |
+
+### Compartilhamento
+| Metodo | Endpoint | Auth | Descricao |
+|--------|----------|------|-----------|
+| POST | `/api/share/projects/:id` | Manager+ | Criar link |
+| GET | `/api/share/projects/:id/links` | Manager+ | Listar links |
+| DELETE | `/api/share/links/:id` | Criador/Admin | Excluir link |
+| GET | `/api/share/public/:token` | **Publico** | Visualizar Gantt |
+
+### Administracao
+| Metodo | Endpoint | Auth | Descricao |
+|--------|----------|------|-----------|
+| GET | `/api/admin/departments` | JWT | Listar departamentos |
+| POST | `/api/admin/departments` | Admin | Criar departamento |
+| PUT | `/api/admin/departments/:id` | Admin | Atualizar departamento |
+| DELETE | `/api/admin/departments/:id` | Admin | Excluir departamento |
+| PUT | `/api/admin/departments/:id/admin` | Admin | Atribuir admin |
+| DELETE | `/api/admin/departments/:id/admin` | Admin | Remover admin |
+
+### Configuracoes
+| Metodo | Endpoint | Auth | Descricao |
+|--------|----------|------|-----------|
+| GET | `/api/settings` | JWT | Obter configuracoes |
+| PUT | `/api/settings` | JWT | Atualizar configuracoes |
+| GET | `/api/profile` | JWT | Obter perfil |
+| PUT | `/api/profile` | JWT | Atualizar perfil |
+
+### Insights
+| Metodo | Endpoint | Auth | Descricao |
+|--------|----------|------|-----------|
+| GET | `/api/insights` | JWT | Obter insights |
+
+---
+
+## Instalacao
+
+### Pre-requisitos
+- Python 3.12+
 - Node.js 18+
-- npm ou yarn
+- MySQL 8.0+
 
-### Backend
+### 1. Configurar Banco de Dados
+
+```bash
+# Criar banco de dados
+mysql -u root -p
+
+CREATE DATABASE project_grantt CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+exit;
+
+# Executar schema
+cd backend
+mysql -u root -p project_grantt < migrations/schema.sql
+```
+
+### 2. Configurar Backend
 
 ```bash
 cd backend
@@ -81,145 +339,123 @@ venv\Scripts\activate
 # Linux/Mac:
 source venv/bin/activate
 
-# Instalar dependências
+# Instalar dependencias
 pip install -r requirements.txt
 
-# Configurar variáveis de ambiente
-cp .env.example .env
-# Edite o arquivo .env com suas configurações
+# Configurar variaveis de ambiente
+# Editar .env com suas credenciais MySQL
 
-# Executar
+# Popular dados de teste
+python scripts/seed_database.py
+
+# Iniciar servidor
 python run.py
 ```
 
-O backend estará disponível em `http://localhost:5000`
+Backend disponivel em: `http://localhost:5000`
 
-### Frontend
+### 3. Configurar Frontend
 
 ```bash
 cd frontend
 
-# Instalar dependências
+# Instalar dependencias
 npm install
 
-# Executar em desenvolvimento
+# Criar arquivo de ambiente
+echo "NEXT_PUBLIC_API_URL=http://localhost:5000/api" > .env.local
+
+# Iniciar servidor
 npm run dev
 ```
 
-O frontend estará disponível em `http://localhost:3000`
-
-## Estrutura do Projeto
-
-```
-project-gantt/
-├── backend/
-│   ├── app/
-│   │   ├── config/         # Configurações do banco e app
-│   │   ├── models/         # Modelos do SQLAlchemy
-│   │   ├── routes/         # Endpoints da API
-│   │   ├── services/       # Lógica de negócio
-│   │   └── utils/          # Utilitários (auth, validators)
-│   ├── tests/              # Testes automatizados
-│   ├── uploads/            # Arquivos enviados
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── app/                # Páginas (App Router)
-│   ├── components/         # Componentes React
-│   │   ├── dashboard/      # Componentes do dashboard
-│   │   ├── gantt/          # Gráfico Gantt
-│   │   ├── layout/         # Header, Sidebar
-│   │   ├── projects/       # Componentes de projetos
-│   │   ├── settings/       # Componentes de configurações
-│   │   ├── tasks/          # Componentes de tarefas
-│   │   ├── team/           # Componentes de equipe
-│   │   └── ui/             # Componentes base (shadcn)
-│   ├── contexts/           # Contextos React
-│   ├── lib/
-│   │   └── services/       # Serviços de API
-│   └── public/             # Arquivos estáticos
-│
-└── README.md
-```
-
-## API Endpoints
-
-### Autenticação
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| POST | `/api/auth/register` | Registrar usuário |
-| POST | `/api/auth/login` | Login |
-| POST | `/api/auth/logout` | Logout |
-| POST | `/api/auth/refresh` | Renovar token |
-
-### Projetos
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| GET | `/api/projects` | Listar projetos |
-| POST | `/api/projects` | Criar projeto |
-| GET | `/api/projects/:id` | Obter projeto |
-| PUT | `/api/projects/:id` | Atualizar projeto |
-| DELETE | `/api/projects/:id` | Excluir projeto |
-
-### Tarefas
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| GET | `/api/tasks` | Listar tarefas |
-| POST | `/api/tasks` | Criar tarefa |
-| GET | `/api/tasks/:id` | Obter tarefa |
-| PUT | `/api/tasks/:id` | Atualizar tarefa |
-| DELETE | `/api/tasks/:id` | Excluir tarefa |
-
-### Equipe
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| GET | `/api/team` | Listar membros |
-| POST | `/api/team` | Criar membro |
-| PUT | `/api/team/:id` | Atualizar membro |
-| DELETE | `/api/team/:id` | Excluir membro |
-
-### Insights
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| GET | `/api/insights` | Obter insights |
-
-## Banco de Dados
-
-### Tabelas Principais
-- **users** - Usuários do sistema
-- **user_settings** - Configurações do usuário
-- **projects** - Projetos
-- **tasks** - Tarefas
-- **team_members** - Membros da equipe
-- **project_members** - Relação projeto-membro (N:M)
-- **departments** - Departamentos
-- **roles** - Cargos
-
-## Segurança
-
-- Autenticação JWT com refresh tokens
-- Blacklist de tokens para logout seguro
-- RBAC (Role-Based Access Control)
-- Rate limiting por IP
-- Sanitização de inputs
-- Validação de uploads
-
-## Testes
-
-```bash
-# Backend
-cd backend
-pytest
-
-# Frontend
-cd frontend
-npm test
-```
-
-## Autor
-
-Desenvolvido por **Isaac** com auxílio do Claude AI.
+Frontend disponivel em: `http://localhost:3000`
 
 ---
 
-Se tiver dúvidas ou sugestões, abra uma issue no repositório.
+## Contas de Teste
+
+| Cargo | Email | Senha |
+|-------|-------|-------|
+| Admin | admin@projectflow.com | admin123 |
+| Gerente | gerente@projectflow.com | gerente123 |
+| Membro | membro@projectflow.com | membro123 |
+| Viewer | viewer@projectflow.com | viewer123 |
+
+---
+
+## Formato de Respostas da API
+
+### Sucesso
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Operacao realizada com sucesso"
+}
+```
+
+### Erro
+```json
+{
+  "success": false,
+  "data": null,
+  "message": "Descricao do erro"
+}
+```
+
+### Paginacao
+```json
+{
+  "success": true,
+  "data": [ ... ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 100,
+    "totalPages": 2
+  }
+}
+```
+
+---
+
+## Variaveis de Ambiente
+
+### Backend (.env)
+```env
+FLASK_APP=run.py
+FLASK_ENV=development
+SECRET_KEY=sua_secret_key_aqui
+DATABASE_URL=mysql+pymysql://root:senha@localhost:3306/project_grantt
+JWT_SECRET_KEY=sua_jwt_secret_aqui
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:3002
+PORT=5000
+```
+
+### Frontend (.env.local)
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```
+
+---
+
+## Seguranca
+
+- Autenticacao JWT com tokens seguros
+- Senhas hasheadas com Werkzeug (pbkdf2:sha256)
+- RBAC (Role-Based Access Control)
+- Validacao de inputs
+- CORS configurado
+- Soft delete para dados sensiveis
+- Tokens de compartilhamento seguros (32 bytes)
+
+---
+
+## Autor
+
+Desenvolvido por **Isaac** com auxilio do Claude AI.
+
+---
+
+Se tiver duvidas ou sugestoes, abra uma issue no repositorio.
