@@ -21,6 +21,7 @@ from app.utils.rbac import (
     require_auth,
     require_permission,
     require_task_access,
+    require_task_department_scope,
     Permission
 )
 
@@ -70,9 +71,11 @@ def get_tasks():
 
 @tasks_bp.route('/<task_id>', methods=['GET'])
 @require_auth
+@require_task_department_scope
 def get_task(task_id):
     """
     Get a single task by ID (requires authentication)
+    Department admins can only access tasks from projects in their department.
 
     Response: ApiResponse<Task>
     """

@@ -81,11 +81,47 @@ class ShareLinkService:
 
     @staticmethod
     def delete(link_id: str) -> bool:
-        """Delete a share link"""
+        """Delete a share link (legacy method - use revoke instead)"""
         share_link = ShareLink.query.get(link_id)
         if not share_link:
             return False
         db.session.delete(share_link)
+        db.session.commit()
+        return True
+
+    @staticmethod
+    def revoke(link_id: str) -> bool:
+        """
+        Revoke a share link (soft delete - sets revoked_at)
+
+        Args:
+            link_id: ID of the share link to revoke
+
+        Returns:
+            True if revoked, False if not found
+        """
+        share_link = ShareLink.query.get(link_id)
+        if not share_link:
+            return False
+        share_link.revoke()
+        db.session.commit()
+        return True
+
+    @staticmethod
+    def record_access(token: str) -> bool:
+        """
+        Record an access to a share link
+
+        Args:
+            token: The share link token
+
+        Returns:
+            True if access recorded, False if link not found or invalid
+        """
+        share_link = ShareLink.query.filter_by(token=token).first()
+        if not share_link or not share_link.is_valid:
+            return False
+        share_link.record_access()
         db.session.commit()
         return True
 

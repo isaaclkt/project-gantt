@@ -626,3 +626,140 @@ def require_department_access(allow_own_department: bool = True):
 
         return decorated_function
     return decorator
+
+
+# ============================================
+# Department Scoping Functions
+# ============================================
+
+def check_project_department_scope(user_id: str, project_id: str) -> bool:
+    """
+    Check if user has access to a project based on department scope.
+
+    Department admins can only access projects owned by users in their department.
+
+    Args:
+        user_id: The user's ID
+        project_id: The project ID to check
+
+    Returns:
+        True if user has access, False otherwise
+    """
+    from app.services import UserService, ProjectService
+    user = UserService.get_by_id(user_id)
+    project = ProjectService.get_by_id(project_id)
+
+    if not user or not project:
+        return False
+
+    # Admin always has access
+    if user.role == Role.ADMIN.value:
+        return True
+
+    # Managers+ can access any project (existing behavior)
+    if user.role in [Role.MANAGER.value, Role.DEPARTMENT_ADMIN.value]:
+        # For department admin, check if project owner is in same department
+        if user.role == Role.DEPARTMENT_ADMIN.value:
+            if project.owner and project.owner.department_id == user.department_id:
+                return True
+            return False
+
+        # Regular managers have full access
+        return True
+
+    # Project owner
+    if project.owner_id == user_id:
+        return True
+
+    # Project member
+    if is_project_member(user_id, project_id):
+        return True
+
+    return False
+
+
+def check_task_department_scope(user_id: str, task_id: str) -> bool:
+    """
+    Check if user has access to a task based on department scope.
+
+    Args:
+        user_id: The user's ID
+        task_id: The task ID to check
+
+    Returns:
+        True if user has access, False otherwise
+    """
+    from app.services import TaskService
+    task = TaskService.get_by_id(task_id)
+
+    if not task:
+        return False
+
+    # Check project scope instead (tasks belong to projects)
+    return check_project_department_scope(user_id, task.project_id)
+
+
+def require_project_department_scope(f):
+    """
+    Decorator to require department scope for project access.
+
+    Ensures department admins can only access projects in their department.
+    """
+    @wraps(f)
+    @jwt_required()
+    def decorated_function(*args, **kwargs):
+        user_id = get_jwt_identity()
+        project_id = kwargs.get('project_id')
+
+        if not project_id:
+            return error_response('Project ID required', 400)
+
+        from app.services import UserService
+        user = UserService.get_by_id(user_id)
+
+        if not user:
+            return error_response('User not found', 404)
+
+        if not user.is_active:
+            return error_response('User account is deactivated', 403)
+
+        if not check_project_department_scope(user_id, project_id):
+            return error_response('Access denied to this project', 403)
+
+        g.current_user = user
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def require_task_department_scope(f):
+    """
+    Decorator to require department scope for task access.
+
+    Ensures department admins can only access tasks in projects from their department.
+    """
+    @wraps(f)
+    @jwt_required()
+    def decorated_function(*args, **kwargs):
+        user_id = get_jwt_identity()
+        task_id = kwargs.get('task_id')
+
+        if not task_id:
+            return error_response('Task ID required', 400)
+
+        from app.services import UserService
+        user = UserService.get_by_id(user_id)
+
+        if not user:
+            return error_response('User not found', 404)
+
+        if not user.is_active:
+            return error_response('User account is deactivated', 403)
+
+        if not check_task_department_scope(user_id, task_id):
+            return error_response('Access denied to this task', 403)
+
+        g.current_user = user
+        return f(*args, **kwargs)
+
+    return decorated_function

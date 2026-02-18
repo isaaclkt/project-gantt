@@ -64,9 +64,10 @@ def get_project_share_links(project_id):
 
 @share_bp.route('/links/<link_id>', methods=['DELETE'])
 @require_auth
-def delete_share_link(link_id):
+def revoke_share_link(link_id):
     """
-    Delete a share link (Creator or Admin only)
+    Revoke a share link (Creator or Admin only)
+    Note: This is a soft delete - the link is not physically deleted
 
     Response: ApiResponse<null>
     """
@@ -78,12 +79,12 @@ def delete_share_link(link_id):
     user_id = get_jwt_identity()
     user_role = g.current_user.role
 
-    # Only creator or admin can delete
+    # Only creator or admin can revoke
     if share_link.created_by != user_id and not has_role(user_role, Role.ADMIN.value):
         return error_response('Acesso negado', 403)
 
-    ShareLinkService.delete(link_id)
-    return api_response(data=None, message='Link de compartilhamento excluído com sucesso')
+    ShareLinkService.revoke(link_id)
+    return api_response(data=None, message='Link de compartilhamento revogado com sucesso')
 
 
 # ============================================
@@ -94,6 +95,7 @@ def delete_share_link(link_id):
 def get_shared_project(token):
     """
     Get project data via share token (PUBLIC - no auth required)
+    Records access metrics on successful access
 
     Response: ApiResponse<ProjectWithTasks>
     """
@@ -105,6 +107,9 @@ def get_shared_project(token):
     project = share_link.project
     if not project or project.is_deleted:
         return error_response('Projeto não encontrado', 404)
+
+    # Record access metrics (non-blocking - failure won't affect response)
+    ShareLinkService.record_access(token)
 
     # Return project with tasks for Gantt visualization
     project_data = project.to_dict_with_tasks()

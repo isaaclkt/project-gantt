@@ -92,15 +92,43 @@ Permite compartilhar projetos publicamente sem necessidade de login:
 - Expiracao configuravel (1-30 dias)
 - Visualizacao publica do Gantt
 - Botao de copiar link
+- **Tracking de acessos** - registra ultimo acesso e contador
+- **Revogacao** - desativa link sem deletar registro
 
-### 7. Hierarquia de Departamentos
+### 7. Sistema de Convites
+
+Permite convidar novos membros para a equipe via email:
+
+- Tokens seguros de 32 bytes
+- Expiracao configuravel (1-30 dias)
+- **Opcao de pre-definir senha** - admin define senha no convite
+- Aceite de convite cria User + Settings + TeamMember
+- Roles permitidos: manager, member, viewer (nao department_admin)
+- **Scoping de departamento** - department admin só convida para seu dept
+- **Revogacao** - convites invalidados por soft delete
+- **Auditoria** - todos os convites sao rastreados
+
+### 8. Hierarquia de Departamentos
 
 - Cada departamento pode ter 1 administrador
 - Admin de departamento gerencia APENAS seu departamento
 - Restricao automatica de visualizacao e edicao
 - Endpoints para atribuir/remover admin de departamento
+- **Scoping em rotas por ID** - /projects/:id e /tasks/:id verificam departamento
 
-### 8. Insights Inteligentes
+### 9. Auditoria de Ações
+
+Sistema completo de logging de eventos críticos:
+
+- Registra todas as ações: LOGIN, LOGOUT, CREATED, UPDATED, DELETED, REVOKED
+- Tracking de recursos: users, projects, tasks, invites, share_links
+- **Convites**: INVITE_CREATED, INVITE_ACCEPTED, INVITE_REVOKED
+- **Share Links**: SHARE.CREATED, SHARE.REVOKED
+- Endereço IP e User Agent registrados
+- Logs por usuário, por recurso ou recentes
+- Cleanup configuravel de logs antigos
+
+### 10. Insights Inteligentes
 
 - Alertas de tarefas atrasadas
 - Projetos com risco de atraso
@@ -202,17 +230,22 @@ project-grantt/
 | `project_members` | Relacao N:M projeto-membro |
 | `tasks` | Tarefas |
 | `share_links` | Links de compartilhamento |
+| `audit_logs` | Logs de auditoria de acoes |
+| `invites` | Convites para novos membros |
 
 ### Diagrama de Relacionamentos
 
 ```
 departments 1---1 users (admin_id)
 departments 1---* users (department_id)
+departments 1---* invites
 
 users 1---1 user_settings
 users 1---1 team_members
 users 1---* projects (owner_id)
 users 1---* share_links (created_by)
+users 1---* invites (created_by)
+users 1---* audit_logs
 
 projects *---* team_members (via project_members)
 projects 1---* tasks
@@ -276,8 +309,23 @@ team_members 1---* tasks (assignee_id)
 |--------|----------|------|-----------|
 | POST | `/api/share/projects/:id` | Manager+ | Criar link |
 | GET | `/api/share/projects/:id/links` | Manager+ | Listar links |
-| DELETE | `/api/share/links/:id` | Criador/Admin | Excluir link |
-| GET | `/api/share/public/:token` | **Publico** | Visualizar Gantt |
+| DELETE | `/api/share/links/:id` | Criador/Admin | Revogar link (soft delete) |
+| GET | `/api/share/public/:token` | **Publico** | Visualizar Gantt (com tracking) |
+
+### Convites
+| Metodo | Endpoint | Auth | Descricao |
+|--------|----------|------|-----------|
+| POST | `/api/invites` | Manager+ | Criar convite |
+| GET | `/api/invites` | Manager+ | Listar convites (com scoping) |
+| GET | `/api/invites/:id` | Manager+ | Obter convite |
+| DELETE | `/api/invites/:id` | Criador/Admin | Revogar convite |
+| POST | `/api/invites/:token/accept` | **Publico** | Aceitar convite e criar usuario |
+| GET | `/api/invites/validate/:token` | **Publico** | Validar convite |
+
+### Auditoria
+| Metodo | Endpoint | Auth | Descricao |
+|--------|----------|------|-----------|
+| GET | `/api/audit/logs` | Admin | Listar logs de auditoria |
 
 ### Administracao
 | Metodo | Endpoint | Auth | Descricao |

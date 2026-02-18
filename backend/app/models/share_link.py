@@ -17,6 +17,9 @@ class ShareLink(db.Model):
     expires_at = db.Column(db.DateTime, nullable=False)
     created_by = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    revoked_at = db.Column(db.DateTime, nullable=True)
+    last_access_at = db.Column(db.DateTime, nullable=True)
+    access_count = db.Column(db.Integer, default=0)
 
     # Relationships
     project = db.relationship('Project', backref='share_links')
@@ -34,8 +37,22 @@ class ShareLink(db.Model):
 
     @property
     def is_valid(self):
-        """Check if link is still valid"""
-        return not self.is_expired
+        """Check if link is still valid (not expired and not revoked)"""
+        return not self.is_expired and self.revoked_at is None
+
+    @property
+    def is_revoked(self):
+        """Check if link has been revoked"""
+        return self.revoked_at is not None
+
+    def record_access(self):
+        """Record an access to this share link"""
+        self.last_access_at = datetime.utcnow()
+        self.access_count += 1
+
+    def revoke(self):
+        """Revoke (soft delete) this share link"""
+        self.revoked_at = datetime.utcnow()
 
     def to_dict(self):
         """Convert to dictionary for API response"""
@@ -46,7 +63,12 @@ class ShareLink(db.Model):
             'expiresAt': self.expires_at.isoformat() if self.expires_at else None,
             'createdBy': self.created_by,
             'createdAt': self.created_at.isoformat() if self.created_at else None,
-            'isExpired': self.is_expired
+            'revokedAt': self.revoked_at.isoformat() if self.revoked_at else None,
+            'lastAccessAt': self.last_access_at.isoformat() if self.last_access_at else None,
+            'accessCount': self.access_count,
+            'isExpired': self.is_expired,
+            'isRevoked': self.is_revoked,
+            'isValid': self.is_valid
         }
 
     def __repr__(self):

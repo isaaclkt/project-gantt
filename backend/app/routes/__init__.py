@@ -9,6 +9,7 @@ from .auth import auth_bp
 from .admin import admin_bp
 from .insights import insights_bp
 from .share import share_bp
+from .invites import invites_bp
 
 
 def register_routes(app):
@@ -21,6 +22,7 @@ def register_routes(app):
     app.register_blueprint(admin_bp)
     app.register_blueprint(insights_bp)
     app.register_blueprint(share_bp)
+    app.register_blueprint(invites_bp)
 
 
 __all__ = [
@@ -32,5 +34,6 @@ __all__ = [
     'admin_bp',
     'insights_bp',
     'share_bp',
+    'invites_bp',
     'register_routes'
 ]

@@ -7,6 +7,8 @@ from .project import Project
 from .task import Task
 from .department import Department, Role
 from .share_link import ShareLink
+from .audit_log import AuditLog
+from .invite import Invite
 
 __all__ = [
     'User',
@@ -17,5 +19,7 @@ __all__ = [
     'Task',
     'Department',
     'Role',
-    'ShareLink'
+    'ShareLink',
+    'AuditLog',
+    'Invite'
 ]

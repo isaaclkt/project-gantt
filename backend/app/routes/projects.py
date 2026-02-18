@@ -22,6 +22,7 @@ from app.utils.rbac import (
     require_auth,
     require_permission,
     require_project_access,
+    require_project_department_scope,
     Permission,
     Role,
     has_role,
@@ -61,9 +62,11 @@ def get_projects():
 
 @projects_bp.route('/<project_id>', methods=['GET'])
 @require_auth
+@require_project_department_scope
 def get_project(project_id):
     """
     Get a single project by ID (requires authentication)
+    Department admins can only access projects in their department.
 
     Response: ApiResponse<Project>
     """
@@ -180,9 +183,11 @@ def delete_project(project_id):
 
 @projects_bp.route('/<project_id>/tasks', methods=['GET'])
 @require_auth
+@require_project_department_scope
 def get_project_tasks(project_id):
     """
     Get all tasks for a specific project (requires authentication)
+    Department admins can only access tasks from projects in their department.
 
     Response: ApiResponse<Task[]>
     """
@@ -198,9 +203,11 @@ def get_project_tasks(project_id):
 
 @projects_bp.route('/<project_id>/members', methods=['GET'])
 @require_auth
+@require_project_department_scope
 def get_project_members(project_id):
     """
     Get all team members of a project (requires authentication)
+    Department admins can only access members of projects in their department.
 
     Response: ApiResponse<TeamMember[]>
     """
