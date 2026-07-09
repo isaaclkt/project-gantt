@@ -13,16 +13,23 @@ class InsightsService:
     """Generates smart insights from project/task/team data."""
 
     @staticmethod
-    def generate() -> list[dict]:
+    def generate(user=None) -> list[dict]:
         """
         Main entry point. Loads all data once, runs all analysis
         methods, and returns a flat list of insights sorted by priority.
+
+        When `user` is a department_admin, the underlying project/task data is
+        restricted to their own department so the aggregated insights never leak
+        figures from other departments.
         """
+        from app.utils.rbac import scope_project_query, scope_task_query
+
         today = date.today()
 
-        # Batch load all data (avoid N+1 queries)
-        tasks = Task.query.all()
-        projects = Project.query.all()
+        # Batch load all data (avoid N+1 queries), scoped by department when the
+        # caller is a department_admin.
+        tasks = scope_task_query(Task.query, user).all()
+        projects = scope_project_query(Project.query, user).all()
         members = TeamMember.query.all()
 
         insights = []

@@ -1,6 +1,7 @@
 'use client'
 
-import { Project, TeamMember, Task } from '@/lib/types'
+import { useState } from 'react'
+import { Project, TeamMember, Task, UserRole } from '@/lib/types'
 import {
   Dialog,
   DialogContent,
@@ -9,8 +10,12 @@ import {
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Calendar, Users, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Calendar, Users, CheckCircle2, Clock, AlertCircle, Download, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { canExportProject } from '@/lib/permissions'
+import { exportProjectToPDF } from '@/lib/services/pdf-service'
+import { useToast } from '@/components/ui/toast'
 
 interface ProjectDetailDialogProps {
   open: boolean
@@ -18,6 +23,7 @@ interface ProjectDetailDialogProps {
   project: Project | null
   teamMembers: TeamMember[]
   tasks: Task[]
+  userRole?: UserRole
 }
 
 const statusConfig: Record<Project['status'], { label: string; className: string }> = {
@@ -32,9 +38,36 @@ export function ProjectDetailDialog({
   onOpenChange,
   project,
   teamMembers,
-  tasks
+  tasks,
+  userRole
 }: ProjectDetailDialogProps) {
+  const { toast } = useToast()
+  const [isExporting, setIsExporting] = useState(false)
+
   if (!project) return null
+
+  const handleExportPDF = async () => {
+    if (!project) return
+
+    setIsExporting(true)
+    try {
+      await exportProjectToPDF(project.id)
+      toast({
+        title: 'Sucesso',
+        description: 'Relatório PDF baixado com sucesso.',
+        variant: 'default',
+      })
+    } catch (error) {
+      console.error('Error exporting PDF:', error)
+      toast({
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Erro ao exportar PDF.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const status = statusConfig[project.status]
   const projectMembers = teamMembers.filter(m => project.teamMemberIds.includes(m.id))
@@ -60,12 +93,35 @@ export function ProjectDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div
-              className="h-4 w-4 rounded-full shrink-0"
-              style={{ backgroundColor: project.color }}
-            />
-            <DialogTitle className="text-xl">{project.name}</DialogTitle>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div
+                className="h-4 w-4 rounded-full shrink-0"
+                style={{ backgroundColor: project.color }}
+              />
+              <DialogTitle className="text-xl">{project.name}</DialogTitle>
+            </div>
+            {userRole && canExportProject(userRole) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={isExporting}
+                className="gap-2"
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Exportando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    <span>Exportar PDF</span>
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </DialogHeader>
 

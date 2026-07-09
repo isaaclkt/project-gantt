@@ -352,72 +352,84 @@ team_members 1---* tasks (assignee_id)
 
 ---
 
-## Instalacao
+## Como rodar localmente
+
+> **Entrypoints oficiais** — o backend é uma **única** aplicação Flask em `backend/app/`.
+> Rode-a **sempre** por `run.py` (desenvolvimento) ou `wsgi.py` (produção/Gunicorn).
+> O frontend oficial é o app **Next.js** em `frontend/` (App Router). Não existe mais
+> app/HTML legado no repositório.
 
 ### Pre-requisitos
 - Python 3.12+
 - Node.js 18+
-- MySQL 8.0+
+- MySQL 8.0+ (padrão do projeto; veja abaixo uma alternativa em SQLite para dev)
 
-### 1. Configurar Banco de Dados
+### 1. Banco de dados
 
 ```bash
-# Criar banco de dados
-mysql -u root -p
-
-CREATE DATABASE project_grantt CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-exit;
-
-# Executar schema
-cd backend
-mysql -u root -p project_grantt < migrations/schema.sql
+# Criar o banco (o nome DEVE ser project_grantt)
+mysql -u root -p -e "CREATE DATABASE project_grantt CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
-### 2. Configurar Backend
+As tabelas são criadas **automaticamente** pela aplicação no startup (`db.create_all()`).
+O import de `migrations/schema.sql` é **opcional** e só necessário se você quiser as
+_views_ e _triggers_ auxiliares:
+
+```bash
+cd backend
+mysql -u root -p project_grantt < migrations/schema.sql   # opcional (views/triggers)
+```
+
+### 2. Backend
 
 ```bash
 cd backend
 
-# Criar ambiente virtual
+# Ambiente virtual
 python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
 
-# Ativar ambiente virtual
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
-
-# Instalar dependencias
+# Dependencias
 pip install -r requirements.txt
 
-# Configurar variaveis de ambiente
-# Editar .env com suas credenciais MySQL
+# Variaveis de ambiente
+cp .env.example .env
+# Edite .env e ajuste DATABASE_URL (usuario/senha do MySQL).
+# A app le DATABASE_URL — nao existem mais variaveis DB_HOST/DB_USER separadas.
 
-# Popular dados de teste
+# Popular dados de teste (opcional, cria as contas de teste abaixo — requer MySQL)
 python scripts/seed_database.py
 
-# Iniciar servidor
+# Iniciar o servidor (cria as tabelas e sobe a API)
 python run.py
 ```
 
-Backend disponivel em: `http://localhost:5000`
+Backend disponivel em: `http://localhost:5000` — health check em `GET /health`.
 
-### 3. Configurar Frontend
+> **Alternativa sem MySQL (dev rapido):** em `backend/.env` defina
+> `DATABASE_URL=sqlite:///dev.db` e rode `python run.py`. Tudo funciona, exceto o
+> `scripts/seed_database.py` (que usa comandos MySQL); nesse caso crie usuarios via
+> `POST /api/auth/register`.
+
+### 3. Frontend
 
 ```bash
 cd frontend
 
-# Instalar dependencias
+# Dependencias
 npm install
 
-# Criar arquivo de ambiente
-echo "NEXT_PUBLIC_API_URL=http://localhost:5000/api" > .env.local
+# Variaveis de ambiente
+cp .env.example .env.local
+# NEXT_PUBLIC_API_URL ja aponta para http://localhost:5000/api por padrao.
 
-# Iniciar servidor
+# Iniciar o servidor de desenvolvimento
 npm run dev
 ```
 
-Frontend disponivel em: `http://localhost:3000`
+Frontend disponivel em: `http://localhost:3000` (Next.js pode usar 3001-3003 se a
+porta estiver ocupada; esses ports ja estao no CORS_ORIGINS do `.env.example`).
 
 ---
 

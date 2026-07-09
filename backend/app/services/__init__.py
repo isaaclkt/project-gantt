@@ -10,6 +10,7 @@ from .insights_service import InsightsService
 from .share_link_service import ShareLinkService
 from .audit_service import AuditService
 from .invite_service import InviteService
+from .pdf_export_service import PDFExportService
 
 __all__ = [
     'ProjectService',
@@ -22,5 +23,6 @@ __all__ = [
     'InsightsService',
     'ShareLinkService',
     'AuditService',
-    'InviteService'
+    'InviteService',
+    'PDFExportService'
 ]

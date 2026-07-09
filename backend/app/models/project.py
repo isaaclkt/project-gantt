@@ -20,6 +20,12 @@ class Project(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
     owner_id = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='SET NULL'), index=True)
+    department_id = db.Column(
+        db.String(36),
+        db.ForeignKey('departments.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True
+    )
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = db.Column(db.DateTime, nullable=True)
@@ -31,6 +37,7 @@ class Project(db.Model):
         secondary=project_members,
         back_populates='projects'
     )
+    department_ref = db.relationship('Department', foreign_keys=[department_id])
 
     def soft_delete(self):
         """Soft delete the project"""
@@ -65,6 +72,7 @@ class Project(db.Model):
             'color': self.color,
             'status': self.status,
             'progress': self.progress,
+            'departmentId': self.department_id,
             'startDate': self.start_date.isoformat() if self.start_date else None,
             'endDate': self.end_date.isoformat() if self.end_date else None,
             'teamMemberIds': [member.id for member in self.team_members],

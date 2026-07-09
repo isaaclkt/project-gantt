@@ -112,7 +112,10 @@ def register():
         return error_response('Password must be at least 8 characters long', 400)
 
     try:
-        user = UserService.create(data)
+        # SECURITY: public self-service registration. The role is forced to a
+        # safe default inside UserService.register() — any 'role' sent by the
+        # client is ignored, so a user can never self-assign an elevated role.
+        user = UserService.register(data)
 
         # Generate real JWT tokens
         access_token = create_access_token(identity=user.id)

@@ -7,6 +7,7 @@ Tests for:
 3. Invite acceptance - creates user and marks used_at
 """
 import pytest
+from datetime import date
 from app import create_app
 from app.config.database import db
 from app.models import User, Project, Department, Invite, ShareLink, TeamMember, AuditLog
@@ -64,8 +65,8 @@ def db_setup(app):
         db.session.add_all([tm1, tm2])
 
         # Create projects
-        proj1 = Project(id='p1', name='Project TI', owner_id='u4', start_date='2024-01-01', end_date='2024-12-31')
-        proj2 = Project(id='p2', name='Project MKT', owner_id='u5', start_date='2024-01-01', end_date='2024-12-31')
+        proj1 = Project(id='p1', name='Project TI', owner_id='u4', start_date=date(2024, 1, 1), end_date=date(2024, 12, 31))
+        proj2 = Project(id='p2', name='Project MKT', owner_id='u5', start_date=date(2024, 1, 1), end_date=date(2024, 12, 31))
         db.session.add_all([proj1, proj2])
 
         db.session.commit()
@@ -269,12 +270,13 @@ class TestInviteAcceptance:
         db.session.add(invite)
         db.session.commit()
 
-        # Try to accept expired invite
+        # Try to accept expired invite. An invalid/expired/revoked token is
+        # treated as not-found (404), consistently with validate_invite.
         response = client.post('/api/invites/expired_invite_token/accept', json={
             'password': 'password123'
         })
 
-        assert response.status_code == 400
+        assert response.status_code == 404
         assert 'inválido' in response.json['message'] or 'expirado' in response.json['message']
 
         # Verify user was NOT created

@@ -4,7 +4,7 @@ Insights API Routes
 Provides smart analysis of projects, tasks, and team data.
 """
 from datetime import datetime
-from flask import Blueprint
+from flask import Blueprint, g
 from app.services import InsightsService
 from app.utils import api_response, error_response
 from app.utils.rbac import require_auth
@@ -27,7 +27,7 @@ def get_insights():
     Response: ApiResponse<{ insights: Insight[], generatedAt: string }>
     """
     try:
-        insights = InsightsService.generate()
+        insights = InsightsService.generate(user=g.current_user)
 
         return api_response(data={
             'insights': insights,

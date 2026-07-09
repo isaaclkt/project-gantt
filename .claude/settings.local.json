@@ -5,7 +5,28 @@
       "Bash(python:*)",
       "Bash(start http://localhost:8080)",
       "Bash(netstat:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(grep -iE '\\\\.env$|\\\\.env\\\\.')",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_auth.py tests/test_users.py -q)",
+      "Bash(./venv/Scripts/python.exe -m pip install reportlab==4.0.7 -q)",
+      "Bash(./venv/Scripts/python.exe -m pytest -q)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_auth.py tests/test_users.py tests/test_rbac.py tests/test_projects.py tests/test_tasks.py tests/test_security.py -q)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_rbac.py tests/test_projects.py tests/test_tasks.py tests/test_security.py -q)",
+      "Bash(FLASK_ENV=testing DATABASE_URL=\"sqlite:///:memory:\" ./venv/Scripts/python.exe -c \"from app import create_app; a=create_app\\(\\); print\\('BOOT OK - rotas registradas:', len\\(list\\(a.url_map.iter_rules\\(\\)\\)\\)\\)\")",
+      "Bash(ls node_modules/.bin/next)",
+      "Bash(node -e \"console.log\\(Object.keys\\(require\\('./package.json'\\).scripts\\).join\\(', '\\)\\)\")",
+      "Bash(FLASK_ENV=testing DATABASE_URL=sqlite:///:memory: ./venv/Scripts/python.exe -c ' *)",
+      "Bash(./venv/Scripts/python.exe -m pytest --collect-only -q)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_rate_limit.py -v)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_rate_limit.py tests/test_auth.py tests/test_users.py -q)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_rbac.py -v)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_tasks.py::TestViewerTaskWriteAccess -v)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_tasks.py tests/test_rbac.py tests/test_projects.py tests/test_auth.py tests/test_users.py tests/test_rate_limit.py -q)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/test_rbac.py tests/test_projects.py -q)",
+      "Bash(grep -vE \"Warning|sqlalche|deprecated|^$\")",
+      "Bash(git stash *)",
+      "Bash(grep -vE \"Warning|sqlalche|deprecated|^\\\\s*$\")",
+      "Bash(grep -E \"passed,|failed,|passed$\")"
     ]
   }
 }

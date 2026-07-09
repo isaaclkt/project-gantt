@@ -20,13 +20,22 @@ class ProjectService:
     def get_all(
         status: Optional[str] = None,
         page: int = 1,
-        limit: int = 10
+        limit: int = 10,
+        user=None
     ) -> tuple[List[Project], int]:
         """
-        Get all projects with optional filtering and pagination
+        Get all projects with optional filtering and pagination.
+
+        When `user` is a department_admin, results are restricted to projects
+        in their own department (see rbac.scope_project_query). Other roles keep
+        the system's existing visibility.
+
         Returns: (projects, total_count)
         """
+        from app.utils.rbac import scope_project_query
+
         query = Project.query
+        query = scope_project_query(query, user)
 
         if status:
             query = query.filter(Project.status == status)
@@ -59,6 +68,16 @@ class ProjectService:
         start_date = datetime.strptime(data['startDate'], '%Y-%m-%d').date()
         end_date = datetime.strptime(data['endDate'], '%Y-%m-%d').date()
 
+        # A project belongs to a department. Use an explicitly provided
+        # department, otherwise inherit it from the owner's department.
+        owner_id = data.get('ownerId')
+        department_id = data.get('departmentId')
+        if not department_id and owner_id:
+            from app.models import User
+            owner = User.query.get(owner_id)
+            if owner:
+                department_id = owner.department_id
+
         project = Project(
             name=sanitized.get('name', data['name']),
             description=sanitized.get('description', ''),
@@ -66,7 +85,8 @@ class ProjectService:
             status=sanitized.get('status', 'planning'),
             start_date=start_date,
             end_date=end_date,
-            owner_id=data.get('ownerId')
+            owner_id=owner_id,
+            department_id=department_id
         )
 
         # Add team members if provided (IDs only, sanitized by SQLAlchemy)
@@ -107,6 +127,8 @@ class ProjectService:
             project.status = sanitized['status']
         if 'progress' in sanitized:
             project.progress = sanitized['progress']
+        if 'departmentId' in data:
+            project.department_id = data['departmentId'] or None
         if 'startDate' in data:
             project.start_date = datetime.strptime(data['startDate'], '%Y-%m-%d').date()
         if 'endDate' in data:

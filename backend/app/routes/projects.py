@@ -3,9 +3,9 @@ Projects API Routes
 
 Routes are protected with RBAC (Role-Based Access Control).
 """
-from flask import Blueprint, request, g
+from flask import Blueprint, request, g, send_file
 from flask_jwt_extended import get_jwt_identity
-from app.services import ProjectService
+from app.services import ProjectService, PDFExportService
 from app.utils import (
     api_response,
     paginated_response,
@@ -50,7 +50,9 @@ def get_projects():
     page = request.pagination['page']
     limit = request.pagination['limit']
 
-    projects, total = ProjectService.get_all(status=status, page=page, limit=limit)
+    projects, total = ProjectService.get_all(
+        status=status, page=page, limit=limit, user=g.current_user
+    )
 
     return paginated_response(
         data=[p.to_dict() for p in projects],
@@ -255,3 +257,47 @@ def remove_project_member(project_id, team_member_id):
         data=project.to_dict(),
         message='Team member removed from project'
     )
+
+
+@projects_bp.route('/<project_id>/export/pdf', methods=['POST'])
+@require_auth
+@require_permission(Permission.EXPORT_PROJECTS)
+def export_project_pdf(project_id):
+    """
+    Export a project to PDF (requires EXPORT_PROJECTS permission - Manager+)
+    Department admins can only export projects from their department.
+    """
+    project = ProjectService.get_by_id(project_id)
+
+    if not project:
+        return error_response('Project not found', 404)
+
+    try:
+        # Generate PDF
+        pdf_buffer = PDFExportService.generate_project_report(project_id)
+
+        # Generate safe filename
+        safe_name = (project.name or "project").replace(' ', '-').replace('/', '-')
+        filename = f"{safe_name}-report.pdf"
+
+        # Send file
+        return send_file(
+            pdf_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except ValueError as e:
+        import traceback
+        print("=== PDF EXPORT VALUE ERROR ===")
+        print(str(e))
+        traceback.print_exc()
+        return error_response(str(e), 400)
+
+    except Exception as e:
+        import traceback
+        print("=== PDF EXPORT GENERAL ERROR ===")
+        print(str(e))
+        traceback.print_exc()
+        return error_response(f'Failed to generate PDF: {str(e)}', 500)

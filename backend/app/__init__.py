@@ -32,6 +32,9 @@ def create_app(config_name=None):
     # Register blueprints
     register_routes(app)
 
+    # Register health/root routes (used to verify the server is up)
+    _register_health_routes(app)
+
     # Register error handlers
     _register_error_handlers(app)
 
@@ -88,6 +91,24 @@ def _init_rate_limiter(app):
     """Initialize rate limiting"""
     from app.utils.rate_limiter import limiter
     limiter.init_app(app)
+
+
+def _register_health_routes(app):
+    """Lightweight liveness routes (no auth, no DB) to confirm the API is up."""
+    from flask import jsonify
+
+    @app.route('/health', methods=['GET'])
+    def health_check():
+        return jsonify({'status': 'healthy', 'service': 'ProjectFlow Gantt API'})
+
+    @app.route('/', methods=['GET'])
+    def index():
+        return jsonify({
+            'name': 'ProjectFlow Gantt API',
+            'version': '1.0.0',
+            'health': '/health',
+            'api': '/api'
+        })
 
 
 def _register_error_handlers(app):

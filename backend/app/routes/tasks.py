@@ -20,7 +20,7 @@ from app.utils import (
 from app.utils.rbac import (
     require_auth,
     require_permission,
-    require_task_access,
+    require_task_write_access,
     require_task_department_scope,
     Permission
 )
@@ -58,7 +58,8 @@ def get_tasks():
         assignee_id=assignee_id,
         priority=priority,
         page=page,
-        limit=limit
+        limit=limit,
+        user=g.current_user
     )
 
     return paginated_response(
@@ -127,7 +128,7 @@ def create_task():
 
 
 @tasks_bp.route('/<task_id>', methods=['PUT', 'PATCH'])
-@require_task_access(allow_assignee=True, allow_project_member=True)
+@require_task_write_access
 @validate_json
 @validate_string_length('name', min_length=1, max_length=255)
 @validate_date_range('startDate', 'endDate')
@@ -189,7 +190,7 @@ def delete_task(task_id):
 
 
 @tasks_bp.route('/<task_id>/status', methods=['PATCH'])
-@require_task_access(allow_assignee=True, allow_project_member=True)
+@require_task_write_access
 @validate_json
 @validate_required_fields(['status'])
 def update_task_status(task_id):
@@ -220,7 +221,7 @@ def update_task_status(task_id):
 
 
 @tasks_bp.route('/<task_id>/progress', methods=['PATCH'])
-@require_task_access(allow_assignee=True, allow_project_member=True)
+@require_task_write_access
 @validate_json
 @validate_required_fields(['progress'])
 def update_task_progress(task_id):

@@ -37,7 +37,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/contexts/auth-context'
-import { canCreateProject, canEditProject, canDeleteProject, canShareProject } from '@/lib/permissions'
+import { canCreateProject, canEditProject, canDeleteProject, canShareProject, canExportProject } from '@/lib/permissions'
 
 type ViewMode = 'grid' | 'list'
 
@@ -350,6 +350,7 @@ export default function ProjectsPage() {
           project={selectedProject}
           teamMembers={teamMembers}
           tasks={tasks}
+          userRole={userRole}
         />
       )}
 

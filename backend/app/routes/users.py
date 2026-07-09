@@ -100,7 +100,10 @@ def create_user():
         return error_response('A user with this email already exists', 409)
 
     try:
-        user = UserService.create(data)
+        # Administrative creation: this route is guarded by MANAGE_USERS (admin
+        # only). An elevated role is allowed here, but create_by_admin validates
+        # it against the known system roles and rejects anything unexpected.
+        user = UserService.create_by_admin(data)
         return api_response(
             data=user.to_dict(),
             message='User created successfully',

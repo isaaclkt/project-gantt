@@ -102,17 +102,36 @@ def rate_limit_sensitive(f):
 
 # Error handler for rate limit exceeded
 def rate_limit_exceeded_handler(e):
-    """Handle rate limit exceeded errors."""
+    """
+    Handle rate limit exceeded (HTTP 429) errors.
+
+    Returns the API's standard error payload
+    ({data: null, success: false, message, errors?}) via the shared
+    error_response() helper, so a throttled request looks exactly like any
+    other API error to the client instead of blowing up into a 500.
+    """
     from app.utils.response import error_response
 
     logger.warning(
         f"Rate limit exceeded: {get_remote_address()} - {request.endpoint}"
     )
 
-    return error_response(
-        message="Rate limit exceeded. Please try again later.",
+    # Flask-Limiter sets e.description to the limit that was hit (e.g.
+    # "5 per 1 minute"). It is NOT a number of seconds, so we expose it as
+    # context under `errors`, never as a bogus retry_after value.
+    limit_info = getattr(e, 'description', None)
+    errors = {'limit': limit_info} if limit_info else None
+
+    response, status_code = error_response(
+        message="Muitas requisições. Tente novamente em instantes.",
         status_code=429,
-        data={
-            "retry_after": e.description if hasattr(e, 'description') else None
-        }
+        errors=errors,
     )
+
+    # Preserve the Retry-After header when Flask-Limiter provides it, so the
+    # client knows how long to back off before retrying.
+    retry_after = getattr(e, 'retry_after', None)
+    if retry_after is not None:
+        response.headers['Retry-After'] = str(retry_after)
+
+    return response, status_code

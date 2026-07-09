@@ -23,13 +23,22 @@ class TaskService:
         assignee_id: Optional[str] = None,
         priority: Optional[str] = None,
         page: int = 1,
-        limit: int = 50
+        limit: int = 50,
+        user=None
     ) -> tuple[List[Task], int]:
         """
-        Get all tasks with optional filtering and pagination
+        Get all tasks with optional filtering and pagination.
+
+        When `user` is a department_admin, results are restricted to tasks whose
+        project belongs to their own department (see rbac.scope_task_query).
+        Other roles keep the system's existing visibility.
+
         Returns: (tasks, total_count)
         """
+        from app.utils.rbac import scope_task_query
+
         query = Task.query
+        query = scope_task_query(query, user)
 
         if project_id:
             query = query.filter(Task.project_id == project_id)

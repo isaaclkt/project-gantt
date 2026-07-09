@@ -47,6 +47,10 @@ export function canShareProject(role: UserRole): boolean {
   return role === 'admin' || role === 'department_admin' || role === 'manager'
 }
 
+export function canExportProject(role: UserRole): boolean {
+  return role === 'admin' || role === 'department_admin' || role === 'manager'
+}
+
 // --- Task permissions ---
 
 export function canCreateTask(role: UserRole): boolean {

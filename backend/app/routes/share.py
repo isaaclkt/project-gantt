@@ -5,7 +5,7 @@ Routes for managing project share links (temporary public access).
 """
 from flask import Blueprint, request, g
 from flask_jwt_extended import get_jwt_identity
-from app.services import ShareLinkService
+from app.services import ShareLinkService, AuditService
 from app.models import ShareLink
 from app.utils import api_response, error_response, validate_json
 from app.utils.rbac import require_auth, require_project_access, has_role, Role
@@ -39,6 +39,14 @@ def create_share_link(project_id):
             created_by=user_id,
             expires_in_days=expires_in_days
         )
+
+        # Sharing a project publicly is a critical action - audit it.
+        AuditService.log_share_link_created(
+            share_link_id=share_link.id,
+            project_id=project_id,
+            expires_in_days=expires_in_days
+        )
+
         return api_response(
             data=share_link.to_dict(),
             message='Link de compartilhamento criado com sucesso',
@@ -83,7 +91,15 @@ def revoke_share_link(link_id):
     if share_link.created_by != user_id and not has_role(user_role, Role.ADMIN.value):
         return error_response('Acesso negado', 403)
 
+    project_id = share_link.project_id
     ShareLinkService.revoke(link_id)
+
+    # Revoking public access is a critical action - audit it.
+    AuditService.log_share_link_revoked(
+        share_link_id=link_id,
+        project_id=project_id
+    )
+
     return api_response(data=None, message='Link de compartilhamento revogado com sucesso')
 
 

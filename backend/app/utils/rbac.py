@@ -63,6 +63,7 @@ class Permission(str, Enum):
     EDIT_PROJECTS = 'edit_projects'
     DELETE_PROJECTS = 'delete_projects'
     MANAGE_PROJECT_MEMBERS = 'manage_project_members'
+    EXPORT_PROJECTS = 'export_projects'
 
     # Task permissions
     VIEW_TASKS = 'view_tasks'
@@ -114,6 +115,7 @@ ROLE_PERMISSIONS = {
         Permission.ASSIGN_TASKS,
         Permission.VIEW_TEAM,
         Permission.MANAGE_TEAM,
+        Permission.EXPORT_PROJECTS,
     ],
     Role.DEPARTMENT_ADMIN.value: [
         # Department admin can manage their department
@@ -131,6 +133,7 @@ ROLE_PERMISSIONS = {
         Permission.MANAGE_TEAM,
         Permission.MANAGE_DEPARTMENT_MEMBERS,
         Permission.MANAGE_DEPARTMENT_PROJECTS,
+        Permission.EXPORT_PROJECTS,
     ],
     Role.ADMIN.value: [
         # Admin has all permissions
@@ -151,6 +154,7 @@ ROLE_PERMISSIONS = {
         Permission.MANAGE_DEPARTMENTS,
         Permission.MANAGE_ROLES,
         Permission.SYSTEM_SETTINGS,
+        Permission.EXPORT_PROJECTS,
     ],
 }
 
@@ -429,7 +433,12 @@ def require_project_access(allow_owner: bool = True, allow_member: bool = True, 
 
 def require_task_access(allow_assignee: bool = True, allow_project_member: bool = True):
     """
-    Decorator to check task-level access.
+    Decorator to check task-level READ access (participant-level).
+
+    Grants access to managers+, the task assignee, or any member of the task's
+    project. It does NOT guarantee write permission — a read-only role such as
+    'viewer' can pass this check. For mutating endpoints use
+    require_task_write_access instead.
 
     Args:
         allow_assignee: Allow task assignee
@@ -479,6 +488,69 @@ def require_task_access(allow_assignee: bool = True, allow_project_member: bool 
 
         return decorated_function
     return decorator
+
+
+def require_task_write_access(f):
+    """
+    Decorator for task WRITE operations (update, status, progress).
+
+    A user may modify a task only when BOTH conditions hold:
+
+      1. Their role grants write capability (Permission.EDIT_TASKS). This
+         explicitly excludes read-only roles such as 'viewer', even when the
+         viewer is the assignee or a member of the project.
+      2. They have access to this specific task: manager and above, the task's
+         assignee, or a member of the task's project.
+
+    This separates *reading* a task (participant-level, see
+    require_task_access) from *modifying* it (permission-gated).
+    """
+    @wraps(f)
+    @jwt_required()
+    def decorated_function(*args, **kwargs):
+        user_id = get_jwt_identity()
+        task_id = kwargs.get('task_id')
+
+        if not task_id:
+            return error_response('Task ID required', 400)
+
+        from app.services import UserService, TaskService
+        user = UserService.get_by_id(user_id)
+
+        if not user:
+            return error_response('User not found', 404)
+
+        if not user.is_active:
+            return error_response('User account is deactivated', 403)
+
+        task = TaskService.get_by_id(task_id)
+        if not task:
+            return error_response('Task not found', 404)
+
+        user_role = user.role or Role.MEMBER.value
+
+        # Gate 1: read-only roles (e.g. viewer) can never modify a task.
+        if not has_permission(user_role, Permission.EDIT_TASKS):
+            return error_response('Read-only role cannot modify tasks', 403)
+
+        # Gate 2: scope the write to tasks this user can actually reach.
+        # Manager+ can modify any task.
+        if has_role(user_role, Role.MANAGER.value):
+            g.current_user = user
+            return f(*args, **kwargs)
+
+        # Members: only their own assigned tasks or tasks in their projects.
+        if is_task_assignee(user_id, task_id):
+            g.current_user = user
+            return f(*args, **kwargs)
+
+        if is_project_member(user_id, task.project_id):
+            g.current_user = user
+            return f(*args, **kwargs)
+
+        return error_response('Access denied to this task', 403)
+
+    return decorated_function
 
 
 def require_self_or_admin(user_id_param: str = 'user_id'):
@@ -652,30 +724,28 @@ def check_project_department_scope(user_id: str, project_id: str) -> bool:
     if not user or not project:
         return False
 
-    # Admin always has access
+    # Admin: unrestricted.
     if user.role == Role.ADMIN.value:
         return True
 
-    # Managers+ can access any project (existing behavior)
-    if user.role in [Role.MANAGER.value, Role.DEPARTMENT_ADMIN.value]:
-        # For department admin, check if project owner is in same department
-        if user.role == Role.DEPARTMENT_ADMIN.value:
-            if project.owner and project.owner.department_id == user.department_id:
-                return True
-            return False
+    # Department admin: restricted to their own department. A project's
+    # department is its explicit department_id (with an owner-derived fallback
+    # for legacy rows that predate the column).
+    if user.role == Role.DEPARTMENT_ADMIN.value:
+        project_dept_id = project.department_id
+        if project_dept_id is None and project.owner:
+            project_dept_id = project.owner.department_id
+        return (
+            project_dept_id is not None
+            and project_dept_id == user.department_id
+        )
 
-        # Regular managers have full access
-        return True
-
-    # Project owner
-    if project.owner_id == user_id:
-        return True
-
-    # Project member
-    if is_project_member(user_id, project_id):
-        return True
-
-    return False
+    # Everyone else (manager, member, viewer) has read access. These decorators
+    # guard read-only routes only; write operations are gated separately by
+    # require_project_access / require_task_write_access / require_permission.
+    # This keeps single-resource reads consistent with the global listing,
+    # which already returns all projects/tasks to these roles.
+    return True
 
 
 def check_task_department_scope(user_id: str, task_id: str) -> bool:
@@ -699,6 +769,92 @@ def check_task_department_scope(user_id: str, task_id: str) -> bool:
     return check_project_department_scope(user_id, task.project_id)
 
 
+# ============================================
+# Department Scoping for Listings / Queries
+# ============================================
+
+def requires_department_scope(user) -> bool:
+    """
+    Whether this user's data visibility must be limited to their own department.
+
+    Only 'department_admin' is department-scoped: they administer a single
+    department and must never see projects/tasks from other departments.
+    'admin' is global; 'manager', 'member' and 'viewer' keep the system's
+    existing (non department-scoped) listing behavior.
+    """
+    if user is None:
+        return False
+    role = user.role or Role.MEMBER.value
+    return role == Role.DEPARTMENT_ADMIN.value
+
+
+def _project_department_filter(dept_id, Project, User):
+    """
+    SQL predicate: a project belongs to `dept_id`.
+
+    Source of truth is the explicit Project.department_id. For legacy rows that
+    still have a NULL department_id, fall back to the owner's department so no
+    project silently escapes the scope during the data transition.
+    """
+    from sqlalchemy import or_, and_
+    return or_(
+        Project.department_id == dept_id,
+        and_(Project.department_id.is_(None), User.department_id == dept_id)
+    )
+
+
+def scope_project_query(query, user):
+    """
+    Restrict a Project query to the user's department when required.
+
+    A project's department is its explicit department_id (with an owner-derived
+    fallback for legacy rows). A department_admin without a department sees
+    nothing (fail closed), so scope can never silently widen into a global
+    listing.
+    """
+    if not requires_department_scope(user):
+        return query
+
+    from sqlalchemy import false
+    from app.models import User, Project
+
+    dept_id = user.department_id
+    if not dept_id:
+        return query.filter(false())
+
+    # Outer join so projects whose department_id is set but whose owner is NULL
+    # still match on the explicit column.
+    return (
+        query.outerjoin(User, Project.owner_id == User.id)
+             .filter(_project_department_filter(dept_id, Project, User))
+    )
+
+
+def scope_task_query(query, user):
+    """
+    Restrict a Task query to the user's department when required.
+
+    A task inherits its department from its project. Mirrors scope_project_query
+    (explicit Project.department_id with owner fallback) and fails closed for a
+    department_admin with no department.
+    """
+    if not requires_department_scope(user):
+        return query
+
+    from sqlalchemy import false
+    from app.models import User, Project, Task
+
+    dept_id = user.department_id
+    if not dept_id:
+        return query.filter(false())
+
+    return (
+        query.join(Project, Task.project_id == Project.id)
+             .outerjoin(User, Project.owner_id == User.id)
+             .filter(_project_department_filter(dept_id, Project, User))
+    )
+
+
 def require_project_department_scope(f):
     """
     Decorator to require department scope for project access.
@@ -714,7 +870,7 @@ def require_project_department_scope(f):
         if not project_id:
             return error_response('Project ID required', 400)
 
-        from app.services import UserService
+        from app.services import UserService, ProjectService
         user = UserService.get_by_id(user_id)
 
         if not user:
@@ -722,6 +878,11 @@ def require_project_department_scope(f):
 
         if not user.is_active:
             return error_response('User account is deactivated', 403)
+
+        # A non-existent project is a 404, not an authorization failure. Only a
+        # project that exists but is outside the user's department is a 403.
+        if not ProjectService.get_by_id(project_id):
+            return error_response('Project not found', 404)
 
         if not check_project_department_scope(user_id, project_id):
             return error_response('Access denied to this project', 403)
@@ -747,7 +908,7 @@ def require_task_department_scope(f):
         if not task_id:
             return error_response('Task ID required', 400)
 
-        from app.services import UserService
+        from app.services import UserService, TaskService
         user = UserService.get_by_id(user_id)
 
         if not user:
@@ -755,6 +916,11 @@ def require_task_department_scope(f):
 
         if not user.is_active:
             return error_response('User account is deactivated', 403)
+
+        # A non-existent task is a 404, not an authorization failure. Only a task
+        # that exists but is outside the user's department is a 403.
+        if not TaskService.get_by_id(task_id):
+            return error_response('Task not found', 404)
 
         if not check_task_department_scope(user_id, task_id):
             return error_response('Access denied to this task', 403)

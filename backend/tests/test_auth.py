@@ -90,6 +90,66 @@ class TestRegister:
 
         assert response.status_code == 400
 
+    # --- Security: public registration must never grant an elevated role ---
+
+    def test_register_default_role_is_member(self, client, db_session):
+        """Cenário 1: registro sem 'role' -> role segura padrão (member)."""
+        response = client.post('/api/auth/register', json={
+            'name': 'Normal User',
+            'email': 'normal@test.com',
+            'password': 'password12345'
+        })
+        data = response.get_json()
+
+        assert response.status_code == 201
+        assert data['data']['user']['role'] == 'member'
+
+    def test_register_ignores_client_supplied_admin_role(self, client, db_session):
+        """Cenário 2: registro com role=admin -> ignorado, fica member."""
+        from app.models import User
+
+        response = client.post('/api/auth/register', json={
+            'name': 'Sneaky Admin',
+            'email': 'sneaky-admin@test.com',
+            'password': 'password12345',
+            'role': 'admin'
+        })
+        data = response.get_json()
+
+        assert response.status_code == 201
+        assert data['data']['user']['role'] == 'member'
+
+        # Confirm what was actually persisted, not just the response payload
+        user = User.query.filter_by(email='sneaky-admin@test.com').first()
+        assert user is not None
+        assert user.role == 'member'
+
+    def test_register_ignores_client_supplied_manager_role(self, client, db_session):
+        """Cenário 3a: registro com role=manager -> ignorado, fica member."""
+        response = client.post('/api/auth/register', json={
+            'name': 'Sneaky Manager',
+            'email': 'sneaky-manager@test.com',
+            'password': 'password12345',
+            'role': 'manager'
+        })
+        data = response.get_json()
+
+        assert response.status_code == 201
+        assert data['data']['user']['role'] == 'member'
+
+    def test_register_ignores_client_supplied_department_admin_role(self, client, db_session):
+        """Cenário 3b: registro com role=department_admin -> ignorado, fica member."""
+        response = client.post('/api/auth/register', json={
+            'name': 'Sneaky DeptAdmin',
+            'email': 'sneaky-deptadmin@test.com',
+            'password': 'password12345',
+            'role': 'department_admin'
+        })
+        data = response.get_json()
+
+        assert response.status_code == 201
+        assert data['data']['user']['role'] == 'member'
+
 
 class TestRefreshToken:
     """Tests for POST /api/auth/refresh"""

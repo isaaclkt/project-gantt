@@ -6,7 +6,7 @@ Routes for managing team member invitations.
 from flask import Blueprint, request, g
 from flask_jwt_extended import get_jwt_identity
 from app.services import InviteService, AuditService
-from app.models import User
+from app.models import User, Invite
 from app.utils import (
     api_response,
     paginated_response,

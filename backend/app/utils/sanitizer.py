@@ -177,7 +177,10 @@ USER_SCHEMA = {
     'name': {'type': 'string', 'max_length': 255},
     'email': {'type': 'email'},
     'password': {'type': 'string', 'max_length': 128},
-    'role': {'type': 'string', 'max_length': 100},
+    # Role is restricted to the known system roles. Unknown values are sanitized
+    # to None so they can never reach the model (defense in depth for the
+    # user-update path). Public registration ignores this field entirely.
+    'role': {'type': 'enum', 'values': ['admin', 'department_admin', 'manager', 'member', 'viewer']},
     'department': {'type': 'string', 'max_length': 100},
 }
 

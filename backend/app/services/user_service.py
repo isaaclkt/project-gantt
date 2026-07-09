@@ -10,6 +10,16 @@ from app.utils.sanitizer import sanitize_dict, sanitize_email, USER_SCHEMA
 class UserService:
     """Service class for user operations"""
 
+    # All roles a user may legitimately hold in the system.
+    ASSIGNABLE_ROLES = {'admin', 'department_admin', 'manager', 'member', 'viewer'}
+
+    # Safe default role for self-service (public) registration.
+    # Public sign-ups must NEVER be able to grant themselves an elevated role,
+    # so the system always assigns the lowest working role. 'member' is chosen
+    # to match the User model default and lets the account do useful work
+    # (edit assigned tasks) without any privileged capability.
+    DEFAULT_PUBLIC_ROLE = 'member'
+
     @staticmethod
     def _sanitize_user_data(data: dict) -> dict:
         """Sanitize user input data before processing."""
@@ -49,18 +59,24 @@ class UserService:
         return User.query.filter_by(email=email).first()
 
     @staticmethod
-    def create(data: dict) -> User:
+    def _create_user(data: dict, role: str) -> User:
         """
-        Create a new user with sanitized input
+        Internal user creation.
+
+        SECURITY: the role is ALWAYS taken from the explicit `role` argument
+        decided by the caller — never from the request payload. This keeps the
+        service layer safe even if a route forgets to strip a client-supplied
+        role (defense in depth).
         """
-        # Sanitize input data
+        # Sanitize input data (role in the payload is deliberately ignored here)
         sanitized = UserService._sanitize_user_data(data)
+        name = sanitized.get('name', data['name'])
 
         user = User(
-            name=sanitized.get('name', data['name']),
+            name=name,
             email=sanitize_email(data['email']),
-            avatar=sanitized.get('avatar') or f"https://api.dicebear.com/7.x/avataaars/svg?seed={sanitized.get('name', data['name'])}",
-            role=sanitized.get('role', 'member'),
+            avatar=sanitized.get('avatar') or f"https://api.dicebear.com/7.x/avataaars/svg?seed={name}",
+            role=role,
             department=sanitized.get('department'),
             phone=data.get('phone'),
             timezone=data.get('timezone', 'America/Sao_Paulo')
@@ -77,6 +93,31 @@ class UserService:
         db.session.commit()
 
         return user
+
+    @staticmethod
+    def register(data: dict) -> User:
+        """
+        Public self-service registration.
+
+        SECURITY: the role is always forced to DEFAULT_PUBLIC_ROLE. Any `role`
+        present in the payload is ignored, so a user can never sign up as
+        admin / department_admin / manager through the public endpoint.
+        """
+        return UserService._create_user(data, role=UserService.DEFAULT_PUBLIC_ROLE)
+
+    @staticmethod
+    def create_by_admin(data: dict) -> User:
+        """
+        Administrative user creation.
+
+        Must be called only from an authorized route (MANAGE_USERS). The role
+        may be elevated, but must be one of the known, valid system roles —
+        arbitrary/unknown roles are rejected with a ValueError.
+        """
+        requested_role = data.get('role') or UserService.DEFAULT_PUBLIC_ROLE
+        if requested_role not in UserService.ASSIGNABLE_ROLES:
+            raise ValueError(f'Invalid role: {requested_role}')
+        return UserService._create_user(data, role=requested_role)
 
     @staticmethod
     def update(user_id: str, data: dict) -> Optional[User]:
@@ -96,7 +137,9 @@ class UserService:
             user.email = sanitized['email']
         if 'avatar' in sanitized:
             user.avatar = sanitized['avatar']
-        if 'role' in sanitized:
+        # Only update role when a valid role was provided. The enum sanitizer
+        # returns None for unknown roles, so we must never wipe the existing role.
+        if sanitized.get('role'):
             user.role = sanitized['role']
         if 'department' in sanitized:
             user.department = sanitized['department']

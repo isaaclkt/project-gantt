@@ -146,16 +146,19 @@ CREATE TABLE projects (
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     owner_id VARCHAR(36),
+    department_id VARCHAR(36),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
 
     INDEX idx_projects_status (status),
     INDEX idx_projects_owner_id (owner_id),
+    INDEX idx_projects_department_id (department_id),
     INDEX idx_projects_dates (start_date, end_date),
     INDEX idx_projects_deleted (deleted_at),
 
-    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================
